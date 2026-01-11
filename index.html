@@ -229,20 +229,47 @@
             switchScreen('quiz');
         }
 
-        // 通常モード：選択肢生成
+        // Levenshtein距離を計算（文字列の類似度）
+        function levenshteinDistance(str1, str2) {
+            const matrix = [];
+            for (let i = 0; i <= str2.length; i++) {
+                matrix[i] = [i];
+            }
+            for (let j = 0; j <= str1.length; j++) {
+                matrix[0][j] = j;
+            }
+            for (let i = 1; i <= str2.length; i++) {
+                for (let j = 1; j <= str1.length; j++) {
+                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+            return matrix[str2.length][str1.length];
+        }
+
+        // 通常モード：選択肢生成（改良版）
         function generateNormalOptions() {
             const container = document.getElementById('normal-options');
             container.innerHTML = '';
 
-            // 正解以外の選択肢を3つ選ぶ
-            const distractors = [];
-            while(distractors.length < 3) {
-                const r = allVideos[Math.floor(Math.random() * allVideos.length)];
-                // タイトルが重複しないようにする
-                if (r.Title !== currentVideo.Title && !distractors.includes(r)) {
-                    distractors.push(r);
-                }
-            }
+            // 正解タイトルとの類似度を計算
+            const videosWithSimilarity = allVideos
+                .filter(v => v.Title !== currentVideo.Title)
+                .map(v => ({
+                    video: v,
+                    similarity: levenshteinDistance(currentVideo.Title, v.Title)
+                }))
+                .sort((a, b) => a.similarity - b.similarity); // 類似度が高い順（距離が小さい順）
+
+            // 上位から3つ選ぶ（似ているものを優先）
+            const distractors = videosWithSimilarity.slice(0, 3).map(item => item.video);
 
             // 正解と混ぜる
             const options = [...distractors, currentVideo];
