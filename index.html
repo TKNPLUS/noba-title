@@ -231,6 +231,11 @@
 
         // Levenshtein距離を計算（文字列の類似度）
         function levenshteinDistance(str1, str2) {
+            // 入力検証
+            if (str1 == null || str2 == null) return Infinity;
+            str1 = String(str1);
+            str2 = String(str2);
+            
             const matrix = [];
             for (let i = 0; i <= str2.length; i++) {
                 matrix[i] = [i];
@@ -260,7 +265,9 @@
             container.innerHTML = '';
 
             // 正解タイトルとの類似度を計算
-            const videosWithSimilarity = allVideos
+            // パフォーマンス最適化：filteredVideosを使用（allVideosより少ない）
+            const videosToCheck = filteredVideos.length >= 4 ? filteredVideos : allVideos;
+            const videosWithSimilarity = videosToCheck
                 .filter(v => v.Title !== currentVideo.Title)
                 .map(v => ({
                     video: v,
