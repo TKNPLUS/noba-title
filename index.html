@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTuberサムネイルクイズ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="max-w-2xl w-full bg-white rounded-xl shadow-lg overflow-hidden p-6">
+        
+        <header class="mb-6 text-center border-b pb-4">
+            <h1 class="text-2xl font-bold text-red-600">YouTube サムネイルクイズ</h1>
+            <p class="text-sm text-gray-500 mt-1">サムネを見て動画タイトルを当てよう！</p>
+        </header>
+
+        <div id="loading-screen" class="text-center py-10">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+            <p>ランキングデータを読み込み中...</p>
+        </div>
+
+        <div id="error-screen" class="hidden text-center py-10 text-red-600">
+            <p id="error-message">データの読み込みに失敗しました。</p>
+            <p class="text-sm mt-2 text-gray-500">csvファイルが同じフォルダにあるか確認してください。</p>
+        </div>
+
+        <div id="start-screen" class="hidden fade-in space-y-6">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <h2 class="font-bold mb-2">① 出題範囲（ランキング）</h2>
+                <input type="range" id="rank-range" min="10" max="100" value="50" class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer">
+                <div class="flex justify-between text-sm mt-1">
+                    <span>上位10% (有名)</span>
+                    <span id="rank-value" class="font-bold text-blue-600">上位 50%</span>
+                    <span>100% (マニア)</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-2 text-center">
+                    対象動画数: <span id="video-count-display">0</span> 本 / 全 <span id="total-video-count">0</span> 本
+                </p>
+            </div>
+
+            <div class="bg-green-50 p-4 rounded-lg">
+                <h2 class="font-bold mb-2">② モード選択</h2>
+                <div class="flex gap-4 justify-center">
+                    <label class="cursor-pointer flex items-center gap-2">
+                        <input type="radio" name="mode" value="normal" checked class="form-radio text-green-600">
+                        <span>通常モード (4択)</span>
+                    </label>
+                    <label class="cursor-pointer flex items-center gap-2">
+                        <input type="radio" name="mode" value="hard" class="form-radio text-red-600">
+                        <span>ハードモード (入力)</span>
+                    </label>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow transition transform hover:scale-105">
+                ゲームスタート
+            </button>
+        </div>
+
+        <div id="quiz-screen" class="hidden fade-in">
+            <div class="mb-4 flex justify-between items-center text-sm text-gray-500">
+                <span id="quiz-rank-info">Rank: ???</span>
+                <span class="bg-gray-200 px-2 py-1 rounded">View: <span id="quiz-view-count">0</span></span>
+            </div>
+
+            <div class="flex justify-center mb-6">
+                <img id="quiz-image" src="" alt="Thumbnail" class="rounded-lg shadow-md max-h-64 object-cover border-2 border-gray-200">
+            </div>
+
+            <div id="normal-options" class="grid grid-cols-1 gap-3">
+                </div>
+
+            <div id="hard-input-area" class="hidden flex flex-col gap-3">
+                <input type="text" id="title-input" placeholder="動画タイトルを入力..." class="border-2 border-gray-300 p-3 rounded-lg w-full focus:outline-none focus:border-red-500">
+                <button onclick="checkHardAnswer()" class="bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700">回答する</button>
+                <p class="text-xs text-gray-400 text-center">※スペースや大文字小文字は無視されます</p>
+            </div>
+        </div>
+
+        <div id="result-screen" class="hidden fade-in text-center">
+            <h2 id="result-message" class="text-3xl font-bold mb-4"></h2>
+            
+            <div class="bg-gray-50 p-4 rounded-lg mb-6 text-left">
+                <p class="text-xs text-gray-500 mb-1">正解の動画</p>
+                <p id="result-title" class="font-bold text-lg mb-2 text-gray-900"></p>
+                <a id="result-link" href="#" target="_blank" class="text-blue-600 underline text-sm hover:text-blue-800 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+                    YouTubeで見る
+                </a>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="backToMenu()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 rounded-lg">
+                    メニューに戻る
+                </button>
+                <button onclick="nextQuestion()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">
+                    次の問題
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 設定
+        const CSV_FILE = 'all_videos_ranking.csv';
+        
+        // 状態変数
+        let allVideos = [];
+        let filteredVideos = [];
+        let currentVideo = null;
+        let currentMode = 'normal';
+
+        // DOM要素
+        const screens = {
+            loading: document.getElementById('loading-screen'),
+            error: document.getElementById('error-screen'),
+            start: document.getElementById('start-screen'),
+            quiz: document.getElementById('quiz-screen'),
+            result: document.getElementById('result-screen')
+        };
+
+        // 初期化：CSV読み込み
+        window.onload = function() {
+            Papa.parse(CSV_FILE, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        allVideos = results.data;
+                        initMenu();
+                    } else {
+                        showError("データが空です。");
+                    }
+                },
+                error: function(err) {
+                    showError("CSVの読み込みに失敗しました。" + err);
+                }
+            });
+        };
+
+        function showError(msg) {
+            screens.loading.classList.add('hidden');
+            screens.error.classList.remove('hidden');
+            document.getElementById('error-message').innerText = msg;
+        }
+
+        function switchScreen(screenName) {
+            Object.values(screens).forEach(el => el.classList.add('hidden'));
+            screens[screenName].classList.remove('hidden');
+        }
+
+        // メニューの初期化
+        function initMenu() {
+            const total = allVideos.length;
+            document.getElementById('total-video-count').innerText = total;
+            
+            const slider = document.getElementById('rank-range');
+            const display = document.getElementById('rank-value');
+            const countDisplay = document.getElementById('video-count-display');
+
+            function updateCount() {
+                const percent = slider.value;
+                display.innerText = `上位 ${percent}%`;
+                const count = Math.ceil(total * (percent / 100));
+                countDisplay.innerText = count;
+            }
+
+            slider.addEventListener('input', updateCount);
+            updateCount(); // 初回実行
+            switchScreen('start');
+        }
+
+        // ゲーム開始
+        function startGame() {
+            const percent = document.getElementById('rank-range').value;
+            const count = Math.ceil(allVideos.length * (percent / 100));
+            // 上位ランク順（CSVが既にソートされている前提、またはRank列でソート）
+            // CSVはRank順と仮定するが、念の為Rankでソート
+            allVideos.sort((a, b) => parseInt(a.Rank) - parseInt(b.Rank));
+            filteredVideos = allVideos.slice(0, count);
+
+            const modeRadios = document.getElementsByName('mode');
+            for(const radio of modeRadios) {
+                if(radio.checked) currentMode = radio.value;
+            }
+
+            nextQuestion();
+        }
+
+        // 次の問題を出題
+        function nextQuestion() {
+            if (filteredVideos.length === 0) return;
+
+            // ランダムに1つ選ぶ
+            const randomIndex = Math.floor(Math.random() * filteredVideos.length);
+            currentVideo = filteredVideos[randomIndex];
+
+            // 画面セットアップ
+            document.getElementById('quiz-image').src = currentVideo.Thumbnail;
+            document.getElementById('quiz-rank-info').innerText = `Rank: ${currentVideo.Rank}`;
+            document.getElementById('quiz-view-count').innerText = parseInt(currentVideo.ViewCount).toLocaleString();
+            
+            // モード別表示
+            const normalOptions = document.getElementById('normal-options');
+            const hardInput = document.getElementById('hard-input-area');
+            const titleInput = document.getElementById('title-input');
+
+            if (currentMode === 'normal') {
+                normalOptions.classList.remove('hidden');
+                hardInput.classList.add('hidden');
+                generateNormalOptions();
+            } else {
+                normalOptions.classList.add('hidden');
+                hardInput.classList.remove('hidden');
+                titleInput.value = ''; // クリア
+                // Enterキーで回答できるようにする
+                titleInput.onkeydown = (e) => { if(e.key === 'Enter') checkHardAnswer(); };
+            }
+
+            switchScreen('quiz');
+        }
+
+        // 通常モード：選択肢生成
+        function generateNormalOptions() {
+            const container = document.getElementById('normal-options');
+            container.innerHTML = '';
+
+            // 正解以外の選択肢を3つ選ぶ
+            const distractors = [];
+            while(distractors.length < 3) {
+                const r = allVideos[Math.floor(Math.random() * allVideos.length)];
+                // タイトルが重複しないようにする
+                if (r.Title !== currentVideo.Title && !distractors.includes(r)) {
+                    distractors.push(r);
+                }
+            }
+
+            // 正解と混ぜる
+            const options = [...distractors, currentVideo];
+            shuffleArray(options);
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-white border border-gray-300 hover:bg-red-50 hover:border-red-300 p-3 rounded-lg shadow-sm transition text-sm font-medium";
+                btn.innerText = opt.Title;
+                btn.onclick = () => checkNormalAnswer(opt);
+                container.appendChild(btn);
+            });
+        }
+
+        // 配列シャッフル
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // 通常モード判定
+        function checkNormalAnswer(selectedVideo) {
+            const isCorrect = selectedVideo.Title === currentVideo.Title;
+            showResult(isCorrect);
+        }
+
+        // ハードモード判定
+        function checkHardAnswer() {
+            const input = document.getElementById('title-input').value;
+            // 正規化（前後の空白削除、小文字化）して比較
+            const normalize = (str) => str.trim().toLowerCase().replace(/\s+/g, '');
+            
+            // 完全一致が原則だが、使い勝手のため正規化して比較
+            const isCorrect = normalize(input) === normalize(currentVideo.Title);
+            showResult(isCorrect);
+        }
+
+        // 結果表示
+        function showResult(isCorrect) {
+            const msgEl = document.getElementById('result-message');
+            const titleEl = document.getElementById('result-title');
+            const linkEl = document.getElementById('result-link');
+
+            if (isCorrect) {
+                msgEl.innerText = "⭕ 正解！";
+                msgEl.className = "text-3xl font-bold mb-4 text-green-600";
+            } else {
+                msgEl.innerText = "❌ 残念...";
+                msgEl.className = "text-3xl font-bold mb-4 text-red-600";
+            }
+
+            titleEl.innerText = currentVideo.Title;
+            linkEl.href = currentVideo.URL;
+
+            switchScreen('result');
+        }
+
+        function backToMenu() {
+            switchScreen('start');
+        }
+    </script>
+</body>
+</html>
