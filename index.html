@@ -269,7 +269,9 @@
                 .sort((a, b) => a.similarity - b.similarity); // 類似度が高い順（距離が小さい順）
 
             // 上位から3つ選ぶ（似ているものを優先）
-            const distractors = videosWithSimilarity.slice(0, 3).map(item => item.video);
+            // 万が一3つ未満の場合も考慮
+            const numDistractors = Math.min(3, videosWithSimilarity.length);
+            const distractors = videosWithSimilarity.slice(0, numDistractors).map(item => item.video);
 
             // 正解と混ぜる
             const options = [...distractors, currentVideo];
