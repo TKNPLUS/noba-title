@@ -1,92 +1,95 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
-import { useGame } from "@/components/game/GameContext";
+import { Video } from "@/lib/video-data";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, XCircle, ExternalLink } from "lucide-react";
-import Link from "next/link";
 
-export function HardMode() {
-  const { score, currentIndex, shuffledVideos, submitGuess, nextQuestion, currentVideo } = useGame();
-  const [guess, setGuess] = useState("");
-  const [showFeedback, setShowFeedback] = useState(false);
+interface Props {
+  questionVideo: Video;
+  onNext: (isCorrect: boolean) => void;
+}
+
+export default function HardMode({ questionVideo, onNext }: Props) {
+  const [inputVal, setInputVal] = useState("");
+  const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guess.trim() || showFeedback) return;
+    if (isAnswered) return;
 
-    const correct = submitGuess(guess);
+    // 空白削除して完全一致判定
+    const cleanInput = inputVal.trim();
+    const cleanAnswer = questionVideo.title.trim();
+    
+    const correct = cleanInput === cleanAnswer;
+    
     setIsCorrect(correct);
-    setShowFeedback(true);
+    setIsAnswered(true);
   };
-
-  const handleNext = () => {
-    setShowFeedback(false);
-    setGuess("");
-    nextQuestion();
-  };
-  
-  if (!currentVideo) return null;
 
   return (
-    <Card className="w-full max-w-lg shadow-2xl animate-in fade-in">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold font-headline tracking-tight">ハードモード</CardTitle>
-        <CardDescription>このサムネイルの動画タイトルは？</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4 overflow-hidden rounded-lg border shadow-sm">
-          <Image
-            key={currentVideo.URL}
-            src={currentVideo.Thumbnail}
-            alt="YouTube Thumbnail"
-            width={480}
-            height={360}
-            className="aspect-video w-full object-cover"
-            priority
+    <Card>
+      <CardContent className="p-6">
+        <div className="aspect-video relative mb-6 bg-black rounded-md overflow-hidden">
+          <img 
+            src={questionVideo.thumbnail} 
+            alt="Quiz Thumbnail" 
+            className="w-full h-full object-contain"
           />
         </div>
 
-        {showFeedback ? (
-          <div className="flex flex-col items-center gap-4 rounded-lg p-4 mb-4 animate-in fade-in-50">
-            <div className="flex items-center gap-2">
-                {isCorrect ? <CheckCircle2 className="h-8 w-8 text-chart-2" /> : <XCircle className="h-8 w-8 text-destructive" />}
-                <p className={`text-xl font-semibold ${isCorrect ? 'text-chart-2' : 'text-destructive'}`}>{isCorrect ? "正解！" : "不正解"}</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input 
+            placeholder="動画のタイトルを正確に入力してください"
+            value={inputVal}
+            onChange={(e) => setInputVal(e.target.value)}
+            disabled={isAnswered}
+            className="text-lg"
+          />
+          {!isAnswered && (
+            <Button type="submit" className="w-full">
+              回答する
+            </Button>
+          )}
+        </form>
+
+        {isAnswered && (
+          <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-center animate-in fade-in slide-in-from-bottom-2">
+            <h3 className={`text-xl font-bold mb-2 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+              {isCorrect ? "正解！" : "不正解..."}
+            </h3>
+            {!isCorrect && (
+              <div className="mb-4 text-left bg-white p-3 rounded border">
+                <p className="text-xs text-gray-500">あなたの回答:</p>
+                <p className="text-red-500 font-mono text-sm mb-2">{inputVal}</p>
+                <p className="text-xs text-gray-500">正解:</p>
+                <p className="text-green-600 font-bold text-sm">{questionVideo.title}</p>
+              </div>
+            )}
+            
+            <div className="flex gap-4 justify-center items-center">
+              <a 
+                href={questionVideo.url} 
+                target="_blank" 
+                rel="noreferrer"
+                className="text-blue-500 underline text-sm"
+              >
+                動画を開く
+              </a>
+              <Button onClick={() => {
+                setIsAnswered(false);
+                setInputVal("");
+                onNext(isCorrect);
+              }}>
+                次の問題へ
+              </Button>
             </div>
-             <div className="text-center text-sm text-muted-foreground">
-                <p>正解は:</p>
-                <Link href={currentVideo.URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-foreground hover:underline">
-                    {currentVideo.Title}
-                    <ExternalLink className="h-3 w-3" />
-                </Link>
-            </div>
-            <Button onClick={handleNext} className="mt-2">次の問題へ</Button>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-            <Input
-              type="text"
-              placeholder="タイトルを正確に入力..."
-              value={guess}
-              onChange={(e) => setGuess(e.target.value)}
-              disabled={showFeedback}
-              className="text-base"
-              aria-label="Your guess for the title"
-            />
-            <Button type="submit" disabled={showFeedback || !guess.trim()}>回答する</Button>
-          </form>
         )}
       </CardContent>
-      <CardFooter className="flex justify-between items-center">
-        <p className="text-lg font-medium text-muted-foreground">スコア: <span className="font-bold text-accent">{score}</span></p>
-        <p className="text-sm text-muted-foreground">
-          {`問題 ${currentIndex + 1} / ${shuffledVideos.length}`}
-        </p>
-      </CardFooter>
     </Card>
   );
 }

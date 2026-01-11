@@ -1,104 +1,111 @@
 "use client";
 
-import Image from "next/image";
-import { useState, useMemo, useCallback } from "react";
-import { useGame } from "@/components/game/GameContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, XCircle, ExternalLink } from "lucide-react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { Video } from "@/lib/video-data";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-const shuffleArray = (array: any[]) => [...array].sort(() => Math.random() - 0.5);
+interface Props {
+  questionVideo: Video;
+  allVideos: Video[];
+  onNext: (isCorrect: boolean) => void;
+}
 
-export function NormalMode() {
-  const { score, currentIndex, videos, shuffledVideos, submitGuess, nextQuestion, currentVideo } = useGame();
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [isCorrect, setIsCorrect] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+export default function NormalMode({ questionVideo, allVideos, onNext }: Props) {
+  const [choices, setChoices] = useState<Video[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
-  const options = useMemo(() => {
-    if (!currentVideo) return [];
+  // 選択肢を生成する（正解1つ + ダミー3つ）
+  useEffect(() => {
+    setSelected(null);
+    setIsCorrect(null);
     
-    const otherVideos = videos.filter(v => v.Title !== currentVideo.Title);
-    const wrongOptions = shuffleArray(otherVideos).slice(0, 3).map(v => v.Title);
+    // 自分以外の動画からランダムに3つ選ぶ
+    const others = allVideos.filter(v => v.url !== questionVideo.url);
+    const dummies = [];
+    for (let i = 0; i < 3; i++) {
+      if (others.length === 0) break;
+      const idx = Math.floor(Math.random() * others.length);
+      dummies.push(others[idx]);
+      others.splice(idx, 1); // 重複しないように削除
+    }
     
-    return shuffleArray([currentVideo.Title, ...wrongOptions]);
-  }, [currentVideo, videos]);
+    // 正解と混ぜてシャッフル
+    const list = [questionVideo, ...dummies].sort(() => Math.random() - 0.5);
+    setChoices(list);
+  }, [questionVideo, allVideos]);
 
-  const handleGuess = (guess: string) => {
-    if (showFeedback) return;
+  const handleAnswer = (video: Video) => {
+    if (selected) return; // 回答済みなら何もしない
     
-    setSelectedAnswer(guess);
-    const correct = submitGuess(guess);
+    const correct = video.url === questionVideo.url;
+    setSelected(video.url);
     setIsCorrect(correct);
-    setShowFeedback(true);
   };
-
-  const handleNext = () => {
-    setShowFeedback(false);
-    setSelectedAnswer(null);
-    nextQuestion();
-  };
-  
-  if (!currentVideo) return null;
 
   return (
-    <Card className="w-full max-w-lg shadow-2xl animate-in fade-in">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold font-headline tracking-tight">通常モード</CardTitle>
-        <CardDescription>このサムネイルの動画タイトルは？</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4 overflow-hidden rounded-lg border shadow-sm">
-          <Image
-            key={currentVideo.URL}
-            src={currentVideo.Thumbnail}
-            alt="YouTube Thumbnail"
-            width={480}
-            height={360}
-            className="aspect-video w-full object-cover"
-            priority
+    <Card>
+      <CardContent className="p-6">
+        <div className="aspect-video relative mb-6 bg-black rounded-md overflow-hidden">
+          {/* サムネイル表示 */}
+          <img 
+            src={questionVideo.thumbnail} 
+            alt="Quiz Thumbnail" 
+            className="w-full h-full object-contain"
           />
         </div>
 
-        {showFeedback ? (
-          <div className="flex flex-col items-center gap-4 rounded-lg p-4 mb-4 animate-in fade-in-50">
-            <div className="flex items-center gap-2">
-                {isCorrect ? <CheckCircle2 className="h-8 w-8 text-chart-2" /> : <XCircle className="h-8 w-8 text-destructive" />}
-                <p className={`text-xl font-semibold ${isCorrect ? 'text-chart-2' : 'text-destructive'}`}>{isCorrect ? "正解！" : "不正解"}</p>
-            </div>
-            <div className="text-center text-sm text-muted-foreground">
-                <p>正解は:</p>
-                <Link href={currentVideo.URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-bold text-foreground hover:underline">
-                    {currentVideo.Title}
-                    <ExternalLink className="h-3 w-3" />
-                </Link>
-            </div>
-            <Button onClick={handleNext} className="mt-2">次の問題へ</Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-2">
-            {options.map((option, index) => (
+        <div className="grid grid-cols-1 gap-3">
+          {choices.map((choice) => {
+            // 色付けロジック
+            let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+            if (selected) {
+              if (choice.url === questionVideo.url) variant = "default"; // 正解は常に緑（あるいは強調）
+              else if (choice.url === selected && !isCorrect) variant = "destructive"; // 間違えた選択は赤
+            }
+
+            return (
               <Button
-                key={index}
-                variant="outline"
-                size="lg"
-                className="justify-start text-left h-auto whitespace-normal"
-                onClick={() => handleGuess(option)}
+                key={choice.url}
+                variant={variant}
+                className={`h-auto py-3 px-4 text-left justify-start whitespace-normal ${
+                   selected && choice.url === questionVideo.url ? "bg-green-600 hover:bg-green-700 text-white border-green-600" : ""
+                }`}
+                onClick={() => handleAnswer(choice)}
+                disabled={!!selected}
               >
-                {option}
+                {choice.title}
               </Button>
-            ))}
+            );
+          })}
+        </div>
+
+        {/* 結果表示エリア */}
+        {selected && (
+          <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-center animate-in fade-in slide-in-from-bottom-2">
+            <h3 className={`text-xl font-bold mb-2 ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+              {isCorrect ? "正解！" : "残念..."}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              正解は: <strong>{questionVideo.title}</strong>
+            </p>
+            <div className="flex gap-4 justify-center">
+              <a 
+                href={questionVideo.url} 
+                target="_blank" 
+                rel="noreferrer"
+                className="text-blue-500 underline text-sm flex items-center"
+              >
+                YouTubeで動画を見る
+              </a>
+              <Button onClick={() => onNext(!!isCorrect)}>
+                次の問題へ
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-between items-center">
-        <p className="text-lg font-medium text-muted-foreground">スコア: <span className="font-bold text-accent">{score}</span></p>
-        <p className="text-sm text-muted-foreground">
-          {`問題 ${currentIndex + 1} / ${shuffledVideos.length}`}
-        </p>
-      </CardFooter>
     </Card>
   );
 }
