@@ -735,10 +735,11 @@
             zoomImage.style.height = (THUMBNAIL_HEIGHT * ZOOM_SCALE) + 'px';
             
             // ランダムな位置を選択（画像がはみ出す範囲で）
-            const maxLeft = -(THUMBNAIL_WIDTH * (ZOOM_SCALE - 1));
-            const maxTop = -(THUMBNAIL_HEIGHT * (ZOOM_SCALE - 1));
-            const randomLeft = Math.floor(Math.random() * maxLeft);
-            const randomTop = Math.floor(Math.random() * maxTop);
+            // 負の値の範囲内でランダムに配置するため、絶対値を使ってランダム値を生成後に負にする
+            const maxOffsetLeft = THUMBNAIL_WIDTH * (ZOOM_SCALE - 1);
+            const maxOffsetTop = THUMBNAIL_HEIGHT * (ZOOM_SCALE - 1);
+            const randomLeft = -Math.floor(Math.random() * maxOffsetLeft);
+            const randomTop = -Math.floor(Math.random() * maxOffsetTop);
             
             zoomImage.style.left = randomLeft + 'px';
             zoomImage.style.top = randomTop + 'px';
