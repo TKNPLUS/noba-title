@@ -226,6 +226,15 @@
         let blurTimer = null; // ぼかしモード用タイマー
         let blurSeconds = 0; // ぼかしモード経過時間
         let maxViewCount = 0; // フィルター済み動画の最大再生数（キャッシュ）
+        
+        // スライダーの更新関数（再利用のため外部に定義）
+        function updateViewCountDisplay() {
+            const slider = document.getElementById('viewcount-slider');
+            const display = document.getElementById('viewcount-display');
+            if (slider && display) {
+                display.innerText = parseInt(slider.value).toLocaleString();
+            }
+        }
 
         // DOM要素
         const screens = {
@@ -671,12 +680,10 @@
             slider.max = Math.ceil(maxViewCount * SLIDER_MAX_MULTIPLIER);
             slider.value = Math.floor(maxViewCount / SLIDER_INITIAL_DIVISOR);
             
-            function updateDisplay() {
-                display.innerText = parseInt(slider.value).toLocaleString();
-            }
-            
-            slider.addEventListener('input', updateDisplay);
-            updateDisplay();
+            // 既存のリスナーを削除してから新しいリスナーを追加（重複防止）
+            slider.removeEventListener('input', updateViewCountDisplay);
+            slider.addEventListener('input', updateViewCountDisplay);
+            updateViewCountDisplay();
         }
 
         // 再生数予想モード：回答チェック
