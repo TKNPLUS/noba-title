@@ -120,6 +120,16 @@
         <div id="result-screen" class="hidden fade-in text-center">
             <h2 id="result-message" class="text-3xl font-bold mb-4"></h2>
             
+            <!-- 誤答の場合：選択した動画を表示 -->
+            <div id="wrong-answer-section" class="hidden bg-red-50 p-4 rounded-lg mb-4 text-left border-2 border-red-200">
+                <p class="text-xs text-gray-500 mb-1">あなたの回答</p>
+                <p id="wrong-answer-title" class="font-bold text-lg mb-2 text-gray-900"></p>
+                <a id="wrong-answer-link" href="#" target="_blank" class="text-blue-600 underline text-sm hover:text-blue-800 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+                    YouTubeで見る
+                </a>
+            </div>
+            
             <div class="bg-gray-50 p-4 rounded-lg mb-6 text-left">
                 <p class="text-xs text-gray-500 mb-1">正解の動画</p>
                 <p id="result-title" class="font-bold text-lg mb-2 text-gray-900"></p>
@@ -151,6 +161,7 @@
         let filteredVideos = [];
         let currentVideo = null;
         let currentVideo2 = null; // ハイ＆ローモード用
+        let selectedVideo = null; // 選択された動画（誤答時に表示用）
         let currentMode = 'normal';
 
         // DOM要素
@@ -360,8 +371,9 @@
         }
 
         // 通常モード判定
-        function checkNormalAnswer(selectedVideo) {
-            const isCorrect = selectedVideo.Title === currentVideo.Title;
+        function checkNormalAnswer(selected) {
+            selectedVideo = selected;
+            const isCorrect = selected.Title === currentVideo.Title;
             showResult(isCorrect);
         }
 
@@ -381,23 +393,19 @@
             const container = document.getElementById('reverse-options');
             container.innerHTML = '';
 
-            // 正解以外のサムネを3つ選ぶ
-            const distractors = [];
+            // 正解タイトルとの類似度を計算して、類似したタイトルの動画を選ぶ
             const videosToCheck = filteredVideos.length >= 4 ? filteredVideos : allVideos;
-            
-            // 安全性チェック：十分な選択肢があるか確認
-            const availableVideos = videosToCheck.filter(v => v.Title !== currentVideo.Title);
-            const numDistractors = Math.min(3, availableVideos.length);
-            
-            let attempts = 0;
-            const maxAttempts = 100;
-            while(distractors.length < numDistractors && attempts < maxAttempts) {
-                const r = availableVideos[Math.floor(Math.random() * availableVideos.length)];
-                if (!distractors.find(d => d.Title === r.Title)) {
-                    distractors.push(r);
-                }
-                attempts++;
-            }
+            const videosWithSimilarity = videosToCheck
+                .filter(v => v.Title !== currentVideo.Title)
+                .map(v => ({
+                    video: v,
+                    similarity: levenshteinDistance(currentVideo.Title, v.Title)
+                }))
+                .sort((a, b) => a.similarity - b.similarity); // 類似度が高い順（距離が小さい順）
+
+            // 類似度が高い上位3つを選択肢として使用
+            const numDistractors = Math.min(3, videosWithSimilarity.length);
+            const distractors = videosWithSimilarity.slice(0, numDistractors).map(item => item.video);
 
             // 正解と混ぜる
             const options = [...distractors, currentVideo];
@@ -414,8 +422,9 @@
         }
 
         // 逆クイズモード判定
-        function checkReverseAnswer(selectedVideo) {
-            const isCorrect = selectedVideo.Title === currentVideo.Title;
+        function checkReverseAnswer(selected) {
+            selectedVideo = selected;
+            const isCorrect = selected.Title === currentVideo.Title;
             showResult(isCorrect);
         }
 
@@ -446,9 +455,10 @@
 
         // ハイ＆ローモード判定
         function checkHighLowAnswer(videoNumber) {
-            const selectedVideo = (videoNumber === 1) ? currentVideo : currentVideo2;
+            const selected = (videoNumber === 1) ? currentVideo : currentVideo2;
+            selectedVideo = selected;
             const otherVideo = (videoNumber === 1) ? currentVideo2 : currentVideo;
-            const isCorrect = parseInt(selectedVideo.ViewCount) > parseInt(otherVideo.ViewCount);
+            const isCorrect = parseInt(selected.ViewCount) > parseInt(otherVideo.ViewCount);
             
             // 結果表示時に両方の再生数を表示
             showHighLowResult(isCorrect, currentVideo, currentVideo2);
@@ -460,13 +470,28 @@
             const titleEl = document.getElementById('result-title');
             const detailEl = document.getElementById('result-detail');
             const linkEl = document.getElementById('result-link');
+            
+            // 誤答セクション
+            const wrongSection = document.getElementById('wrong-answer-section');
+            const wrongTitleEl = document.getElementById('wrong-answer-title');
+            const wrongLinkEl = document.getElementById('wrong-answer-link');
 
             if (isCorrect) {
                 msgEl.innerText = "⭕ 正解！";
                 msgEl.className = "text-3xl font-bold mb-4 text-green-600";
+                wrongSection.classList.add('hidden');
             } else {
                 msgEl.innerText = "❌ 残念...";
                 msgEl.className = "text-3xl font-bold mb-4 text-red-600";
+                
+                // 選択した方を誤答として表示
+                if (selectedVideo) {
+                    wrongSection.classList.remove('hidden');
+                    wrongTitleEl.innerText = selectedVideo.Title;
+                    wrongLinkEl.href = selectedVideo.URL;
+                } else {
+                    wrongSection.classList.add('hidden');
+                }
             }
 
             titleEl.innerText = "再生数比較";
@@ -477,7 +502,7 @@
                 <p class="text-blue-600 font-bold">${parseInt(video2.ViewCount).toLocaleString()} 回</p>
             `;
             
-            // リンクは再生数が多い方を表示
+            // リンクは再生数が多い方を表示（正解）
             const winnerVideo = parseInt(video1.ViewCount) > parseInt(video2.ViewCount) ? video1 : video2;
             linkEl.href = winnerVideo.URL;
 
@@ -490,13 +515,28 @@
             const titleEl = document.getElementById('result-title');
             const detailEl = document.getElementById('result-detail');
             const linkEl = document.getElementById('result-link');
+            
+            // 誤答セクション
+            const wrongSection = document.getElementById('wrong-answer-section');
+            const wrongTitleEl = document.getElementById('wrong-answer-title');
+            const wrongLinkEl = document.getElementById('wrong-answer-link');
 
             if (isCorrect) {
                 msgEl.innerText = "⭕ 正解！";
                 msgEl.className = "text-3xl font-bold mb-4 text-green-600";
+                wrongSection.classList.add('hidden');
             } else {
                 msgEl.innerText = "❌ 残念...";
                 msgEl.className = "text-3xl font-bold mb-4 text-red-600";
+                
+                // 誤答を表示（ハードモード以外）
+                if (selectedVideo && selectedVideo !== currentVideo) {
+                    wrongSection.classList.remove('hidden');
+                    wrongTitleEl.innerText = selectedVideo.Title;
+                    wrongLinkEl.href = selectedVideo.URL;
+                } else {
+                    wrongSection.classList.add('hidden');
+                }
             }
 
             titleEl.innerText = currentVideo.Title;
