@@ -148,7 +148,7 @@
             <div id="zoom-container" class="hidden">
                 <div class="flex justify-center mb-6 overflow-hidden">
                     <div id="zoom-viewport" style="width: 320px; height: 180px; position: relative; overflow: hidden; border: 2px solid #e5e7eb; border-radius: 8px;">
-                        <img id="zoom-image" src="" alt="Zoomed Thumbnail" style="position: absolute;">
+                        <img id="zoom-image" src="" alt="動画サムネイルの拡大部分" style="position: absolute;">
                     </div>
                 </div>
             </div>
@@ -159,7 +159,7 @@
                     <p class="text-sm text-gray-500">時間経過: <span id="blur-timer">0</span>秒 / 徐々に鮮明になります</p>
                 </div>
                 <div class="flex justify-center mb-6">
-                    <img id="blur-image" src="" alt="Blurred Thumbnail" class="rounded-lg shadow-md max-h-64 object-cover border-2 border-gray-200" style="filter: blur(50px);">
+                    <img id="blur-image" src="" alt="徐々に鮮明になる動画サムネイル" class="rounded-lg shadow-md max-h-64 object-cover border-2 border-gray-200" style="filter: blur(50px);">
                 </div>
             </div>
         </div>
@@ -170,7 +170,7 @@
             <!-- 誤答の場合：選択した動画を表示 -->
             <div id="wrong-answer-section" class="hidden bg-red-50 p-4 rounded-lg mb-4 text-left border-2 border-red-200">
                 <p class="text-xs text-gray-500 mb-1">あなたの回答</p>
-                <img id="wrong-answer-thumbnail" src="" alt="誤答サムネイル" class="w-full max-w-xs mx-auto rounded mb-2">
+                <img id="wrong-answer-thumbnail" src="" alt="選択した不正解動画のサムネイル" class="w-full max-w-xs mx-auto rounded mb-2">
                 <p id="wrong-answer-title" class="font-bold text-lg mb-2 text-gray-900"></p>
                 <a id="wrong-answer-link" href="#" target="_blank" class="text-blue-600 underline text-sm hover:text-blue-800 flex items-center gap-1">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
@@ -180,7 +180,7 @@
             
             <div class="bg-gray-50 p-4 rounded-lg mb-6 text-left">
                 <p class="text-xs text-gray-500 mb-1">正解の動画</p>
-                <img id="result-thumbnail" src="" alt="正解サムネイル" class="w-full max-w-xs mx-auto rounded mb-2">
+                <img id="result-thumbnail" src="" alt="正解動画のサムネイル" class="w-full max-w-xs mx-auto rounded mb-2">
                 <p id="result-title" class="font-bold text-lg mb-2 text-gray-900"></p>
                 <div id="result-detail" class="mb-2"></div>
                 <a id="result-link" href="#" target="_blank" class="text-blue-600 underline text-sm hover:text-blue-800 flex items-center gap-1">
