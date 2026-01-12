@@ -458,10 +458,16 @@
                 isCorrect = true;
             } else if (choice === 'lower' && video2Views < video1Views) {
                 isCorrect = true;
+            } else if (video2Views === video1Views) {
+                // Equal view counts - both answers are correct
+                isCorrect = true;
             }
             
             // 正解を表示
             document.getElementById('hl-views-2').innerText = parseInt(higherLowerVideos[1].ViewCount).toLocaleString() + ' 回';
+            
+            // ハイ＆ローモードでは第2の動画を現在の動画として設定
+            currentVideo = higherLowerVideos[1];
             
             showResult(isCorrect);
         }
