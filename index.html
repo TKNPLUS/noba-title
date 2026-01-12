@@ -207,6 +207,8 @@
         
         // ゲームモード設定定数
         const VIEWCOUNT_MARGIN = 100000; // 再生数予想の許容誤差（±10万回）
+        const SLIDER_MAX_MULTIPLIER = 1.5; // スライダーの最大値倍率
+        const SLIDER_INITIAL_DIVISOR = 2; // スライダーの初期値除数
         const THUMBNAIL_WIDTH = 320;
         const THUMBNAIL_HEIGHT = 180;
         const ZOOM_SCALE = 3; // ズームモードの拡大率
@@ -665,9 +667,9 @@
             const slider = document.getElementById('viewcount-slider');
             const display = document.getElementById('viewcount-display');
             
-            // スライダーの最大値を適切に設定（キャッシュ済みの最大再生数の1.5倍）
-            slider.max = Math.ceil(maxViewCount * 1.5);
-            slider.value = Math.floor(maxViewCount / 2);
+            // スライダーの最大値を適切に設定（キャッシュ済みの最大再生数から計算）
+            slider.max = Math.ceil(maxViewCount * SLIDER_MAX_MULTIPLIER);
+            slider.value = Math.floor(maxViewCount / SLIDER_INITIAL_DIVISOR);
             
             function updateDisplay() {
                 display.innerText = parseInt(slider.value).toLocaleString();
@@ -726,8 +728,8 @@
             zoomImage.style.height = (THUMBNAIL_HEIGHT * ZOOM_SCALE) + 'px';
             
             // ランダムな位置を選択（画像がはみ出す範囲で）
-            const maxLeft = -(THUMBNAIL_WIDTH * ZOOM_SCALE - THUMBNAIL_WIDTH);
-            const maxTop = -(THUMBNAIL_HEIGHT * ZOOM_SCALE - THUMBNAIL_HEIGHT);
+            const maxLeft = -(THUMBNAIL_WIDTH * (ZOOM_SCALE - 1));
+            const maxTop = -(THUMBNAIL_HEIGHT * (ZOOM_SCALE - 1));
             const randomLeft = Math.floor(Math.random() * maxLeft);
             const randomTop = Math.floor(Math.random() * maxTop);
             
