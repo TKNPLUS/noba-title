@@ -45,24 +45,24 @@
                 </p>
             </div>
 
-            <div class="bg-yellow-50 p-4 rounded-lg">
-                <h2 class="font-bold mb-2">② ゲームモード</h2>
-                <div class="space-y-2">
-                    <label class="flex items-center">
-                        <input type="radio" name="mode" value="normal" checked class="mr-2">
-                        <span>通常モード（サムネ → タイトル選択）</span>
+            <div class="bg-green-50 p-4 rounded-lg">
+                <h2 class="font-bold mb-2">② モード選択</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="cursor-pointer flex items-center gap-2">
+                        <input type="radio" name="mode" value="normal" checked class="form-radio text-green-600">
+                        <span>通常モード (4択)</span>
                     </label>
-                    <label class="flex items-center">
-                        <input type="radio" name="mode" value="hard" class="mr-2">
-                        <span>ハードモード（サムネ → タイトル入力）</span>
+                    <label class="cursor-pointer flex items-center gap-2">
+                        <input type="radio" name="mode" value="hard" class="form-radio text-red-600">
+                        <span>ハードモード (入力)</span>
                     </label>
-                    <label class="flex items-center">
-                        <input type="radio" name="mode" value="reverse" class="mr-2">
-                        <span>逆クイズ（タイトル → サムネ選択）</span>
+                    <label class="cursor-pointer flex items-center gap-2">
+                        <input type="radio" id="mode-reverse" name="mode" value="reverse" class="form-radio text-purple-600">
+                        <span>逆クイズ (タイトル→サムネ)</span>
                     </label>
-                    <label class="flex items-center">
-                        <input type="radio" name="mode" value="higher-lower" class="mr-2">
-                        <span>ハイ＆ロー（再生数当て）</span>
+                    <label class="cursor-pointer flex items-center gap-2">
+                        <input type="radio" id="mode-highlow" name="mode" value="highlow" class="form-radio text-blue-600">
+                        <span>ハイ＆ロー (再生数当て)</span>
                     </label>
                 </div>
             </div>
@@ -78,8 +78,14 @@
                 <span class="bg-gray-200 px-2 py-1 rounded">View: <span id="quiz-view-count">0</span></span>
             </div>
 
-            <div id="quiz-image-container" class="flex justify-center mb-6">
+            <div class="flex justify-center mb-6">
                 <img id="quiz-image" src="" alt="Thumbnail" class="rounded-lg shadow-md max-h-64 object-cover border-2 border-gray-200">
+            </div>
+
+            <!-- 逆クイズ用：タイトル表示エリア -->
+            <div id="quiz-title-display" class="hidden text-center mb-6 p-4 bg-purple-50 rounded-lg border-2 border-purple-300">
+                <p class="text-xs text-gray-500 mb-2">このタイトルの動画はどれ？</p>
+                <p class="font-bold text-lg"></p>
             </div>
 
             <div id="normal-options" class="grid grid-cols-1 gap-3">
@@ -91,40 +97,22 @@
                 <p class="text-xs text-gray-400 text-center">※スペースや大文字小文字は無視されます</p>
             </div>
 
-            <!-- 逆クイズ用UI -->
-            <div id="reverse-quiz-area" class="hidden">
-                <h3 class="font-bold text-lg mb-4 text-center">このタイトルのサムネはどれ？</h3>
-                <div class="bg-blue-100 p-4 rounded-lg mb-4">
-                    <p id="reverse-title-display" class="text-center font-bold"></p>
-                </div>
-                <div id="reverse-options" class="grid grid-cols-2 gap-3"></div>
+            <!-- 逆クイズ用：サムネイル選択エリア -->
+            <div id="reverse-options" class="hidden grid grid-cols-2 gap-4">
             </div>
 
-            <!-- ハイ＆ロー用UI -->
-            <div id="higher-lower-area" class="hidden space-y-4">
-                <h3 class="font-bold text-lg text-center">どちらの再生数が多い？</h3>
-                
-                <div class="border-2 border-blue-400 p-4 rounded-lg bg-blue-50">
-                    <img id="hl-thumbnail-1" class="w-full rounded mb-2" alt="動画1">
-                    <p id="hl-title-1" class="font-bold text-sm mb-2"></p>
-                    <p id="hl-views-1" class="text-red-600 font-bold"></p>
-                </div>
-                
-                <div class="text-center text-2xl font-bold">VS</div>
-                
-                <div class="border-2 border-gray-300 p-4 rounded-lg">
-                    <img id="hl-thumbnail-2" class="w-full rounded mb-2" alt="動画2">
-                    <p id="hl-title-2" class="font-bold text-sm mb-2"></p>
-                    <p id="hl-views-2" class="text-gray-400 font-bold">??? 回</p>
-                </div>
-                
-                <div class="flex gap-3">
-                    <button onclick="checkHigherLower('higher')" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg">
-                        ⬆️ 多い
-                    </button>
-                    <button onclick="checkHigherLower('lower')" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg">
-                        ⬇️ 少ない
-                    </button>
+            <!-- ハイ＆ロー用：2つの動画比較エリア -->
+            <div id="highlow-container" class="hidden space-y-4">
+                <div class="text-center font-bold text-lg mb-4">どちらの再生数が多い？</div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="cursor-pointer border-2 border-gray-300 hover:border-blue-500 rounded-lg p-4 transition" onclick="checkHighLowAnswer(1)">
+                        <img id="highlow-video1-thumb" src="" alt="サムネ1" class="w-full rounded mb-2">
+                        <p id="highlow-video1-title" class="text-sm font-medium text-center"></p>
+                    </div>
+                    <div class="cursor-pointer border-2 border-gray-300 hover:border-blue-500 rounded-lg p-4 transition" onclick="checkHighLowAnswer(2)">
+                        <img id="highlow-video2-thumb" src="" alt="サムネ2" class="w-full rounded mb-2">
+                        <p id="highlow-video2-title" class="text-sm font-medium text-center"></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -132,9 +120,20 @@
         <div id="result-screen" class="hidden fade-in text-center">
             <h2 id="result-message" class="text-3xl font-bold mb-4"></h2>
             
+            <!-- 誤答の場合：選択した動画を表示 -->
+            <div id="wrong-answer-section" class="hidden bg-red-50 p-4 rounded-lg mb-4 text-left border-2 border-red-200">
+                <p class="text-xs text-gray-500 mb-1">あなたの回答</p>
+                <p id="wrong-answer-title" class="font-bold text-lg mb-2 text-gray-900"></p>
+                <a id="wrong-answer-link" href="#" target="_blank" class="text-blue-600 underline text-sm hover:text-blue-800 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+                    YouTubeで見る
+                </a>
+            </div>
+            
             <div class="bg-gray-50 p-4 rounded-lg mb-6 text-left">
                 <p class="text-xs text-gray-500 mb-1">正解の動画</p>
                 <p id="result-title" class="font-bold text-lg mb-2 text-gray-900"></p>
+                <div id="result-detail" class="mb-2"></div>
                 <a id="result-link" href="#" target="_blank" class="text-blue-600 underline text-sm hover:text-blue-800 flex items-center gap-1">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
                     YouTubeで見る
@@ -161,8 +160,9 @@
         let allVideos = [];
         let filteredVideos = [];
         let currentVideo = null;
+        let currentVideo2 = null; // ハイ＆ローモード用
+        let selectedVideo = null; // 選択された動画（誤答時に表示用）
         let currentMode = 'normal';
-        let higherLowerVideos = []; // ハイ＆ロー用の2つの動画
 
         // DOM要素
         const screens = {
@@ -256,35 +256,40 @@
             document.getElementById('quiz-view-count').innerText = parseInt(currentVideo.ViewCount).toLocaleString();
             
             // モード別表示
+            const quizImage = document.getElementById('quiz-image');
+            const quizTitleDisplay = document.getElementById('quiz-title-display');
             const normalOptions = document.getElementById('normal-options');
             const hardInput = document.getElementById('hard-input-area');
-            const reverseArea = document.getElementById('reverse-quiz-area');
-            const higherLowerArea = document.getElementById('higher-lower-area');
-            const quizImageContainer = document.getElementById('quiz-image-container');
+            const reverseOptions = document.getElementById('reverse-options');
+            const highlowContainer = document.getElementById('highlow-container');
             const titleInput = document.getElementById('title-input');
 
-            // 全てを非表示にしてから、必要なものだけ表示
+            // すべてを一旦非表示
+            quizImage.classList.remove('hidden');
+            quizTitleDisplay.classList.add('hidden');
             normalOptions.classList.add('hidden');
             hardInput.classList.add('hidden');
-            reverseArea.classList.add('hidden');
-            higherLowerArea.classList.add('hidden');
+            reverseOptions.classList.add('hidden');
+            highlowContainer.classList.add('hidden');
 
             if (currentMode === 'normal') {
                 normalOptions.classList.remove('hidden');
-                quizImageContainer.classList.remove('hidden');
                 generateNormalOptions();
             } else if (currentMode === 'reverse') {
-                reverseArea.classList.remove('hidden');
-                quizImageContainer.classList.add('hidden');
+                // 逆クイズモード：サムネは隠してタイトルを表示
+                quizImage.classList.add('hidden');
+                quizTitleDisplay.classList.remove('hidden');
+                quizTitleDisplay.querySelector('p.font-bold').innerText = currentVideo.Title;
+                reverseOptions.classList.remove('hidden');
                 generateReverseOptions();
-            } else if (currentMode === 'higher-lower') {
-                higherLowerArea.classList.remove('hidden');
-                quizImageContainer.classList.add('hidden');
-                generateHigherLowerQuestion();
+            } else if (currentMode === 'highlow') {
+                // ハイ＆ローモード：サムネは隠す
+                quizImage.classList.add('hidden');
+                highlowContainer.classList.remove('hidden');
+                generateHighLowQuestion();
             } else {
-                // hard モード
+                // ハードモード
                 hardInput.classList.remove('hidden');
-                quizImageContainer.classList.remove('hidden');
                 titleInput.value = ''; // クリア
                 // Enterキーで回答できるようにする
                 titleInput.onkeydown = (e) => { if(e.key === 'Enter') checkHardAnswer(); };
@@ -365,14 +370,10 @@
             }
         }
 
-        // 再生数フォーマット用ヘルパー関数
-        function formatViewCount(viewCount) {
-            return parseInt(viewCount).toLocaleString() + ' 回';
-        }
-
         // 通常モード判定
-        function checkNormalAnswer(selectedVideo) {
-            const isCorrect = selectedVideo.Title === currentVideo.Title;
+        function checkNormalAnswer(selected) {
+            selectedVideo = selected;
+            const isCorrect = selected.Title === currentVideo.Title;
             showResult(isCorrect);
         }
 
@@ -387,121 +388,159 @@
             showResult(isCorrect);
         }
 
-        // 逆クイズの選択肢生成
+        // 逆クイズモード：選択肢生成
         function generateReverseOptions() {
             const container = document.getElementById('reverse-options');
             container.innerHTML = '';
-            
-            // タイトルを表示
-            document.getElementById('reverse-title-display').innerText = currentVideo.Title;
 
-            // 正解以外の動画から3つ選ぶ（VideoIDで比較）
-            const availableVideos = filteredVideos.filter(v => v.VideoID !== currentVideo.VideoID);
-            
-            // シャッフルして最初の3つを取得
-            const shuffled = [...availableVideos];
-            shuffleArray(shuffled);
-            
-            const distractors = shuffled.slice(0, Math.min(3, shuffled.length));
+            // 正解タイトルとの類似度を計算して、類似したタイトルの動画を選ぶ
+            const videosToCheck = filteredVideos.length >= 4 ? filteredVideos : allVideos;
+            const videosWithSimilarity = videosToCheck
+                .filter(v => v.Title !== currentVideo.Title)
+                .map(v => ({
+                    video: v,
+                    similarity: levenshteinDistance(currentVideo.Title, v.Title)
+                }))
+                .sort((a, b) => a.similarity - b.similarity); // 類似度が高い順（距離が小さい順）
 
+            // 類似度が高い上位3つを選択肢として使用
+            const numDistractors = Math.min(3, videosWithSimilarity.length);
+            const distractors = videosWithSimilarity.slice(0, numDistractors).map(item => item.video);
+
+            // 正解と混ぜる
             const options = [...distractors, currentVideo];
             shuffleArray(options);
 
+            // サムネをグリッド表示
             options.forEach(opt => {
-                const imgBtn = document.createElement('button');
-                imgBtn.className = "border-2 border-gray-300 hover:border-red-400 rounded overflow-hidden transition";
-                imgBtn.onclick = () => checkReverseAnswer(opt);
-                
-                const img = document.createElement('img');
-                img.src = opt.Thumbnail;
-                img.className = "w-full h-auto";
-                img.alt = "選択肢";
-                
-                imgBtn.appendChild(img);
-                container.appendChild(imgBtn);
+                const div = document.createElement('div');
+                div.className = "cursor-pointer border-2 border-gray-300 hover:border-purple-500 rounded-lg overflow-hidden transition";
+                div.innerHTML = `<img src="${opt.Thumbnail}" alt="サムネイル" class="w-full h-auto">`;
+                div.onclick = () => checkReverseAnswer(opt);
+                container.appendChild(div);
             });
         }
 
-        // 逆クイズの判定
-        function checkReverseAnswer(selectedVideo) {
-            const isCorrect = selectedVideo.VideoID === currentVideo.VideoID;
+        // 逆クイズモード判定
+        function checkReverseAnswer(selected) {
+            selectedVideo = selected;
+            const isCorrect = selected.Title === currentVideo.Title;
             showResult(isCorrect);
         }
 
-        // ハイ＆ローの問題生成
-        function generateHigherLowerQuestion() {
-            // filteredVideosが2つ未満の場合はエラー回避
+        // ハイ＆ローモード：問題生成
+        function generateHighLowQuestion() {
+            // 安全性チェック：十分な動画があるか確認
             if (filteredVideos.length < 2) {
-                console.error('Not enough videos for higher-lower mode');
+                console.error('Not enough videos for High&Low mode');
                 return;
             }
             
-            // ランダムに2つ選ぶ
-            const video1 = filteredVideos[Math.floor(Math.random() * filteredVideos.length)];
-            let video2;
+            // 2つ目の動画をランダムに選ぶ
             let attempts = 0;
             const maxAttempts = 100;
-            
             do {
-                video2 = filteredVideos[Math.floor(Math.random() * filteredVideos.length)];
+                const randomIndex = Math.floor(Math.random() * filteredVideos.length);
+                currentVideo2 = filteredVideos[randomIndex];
                 attempts++;
-            } while (video2.VideoID === video1.VideoID && attempts < maxAttempts);
-            
-            // 万が一同じIDしか選べなかった場合（データに問題がある場合）
-            if (video2.VideoID === video1.VideoID) {
-                console.warn('Could not find different video, using fallback');
-                // フォールバック：インデックスベースで選択
-                const idx1 = filteredVideos.indexOf(video1);
-                const idx2 = (idx1 + 1) % filteredVideos.length;
-                video2 = filteredVideos[idx2];
-            }
-            
-            higherLowerVideos = [video1, video2];
-            
+            } while(currentVideo2.Title === currentVideo.Title && attempts < maxAttempts);
+
             // UI表示
-            document.getElementById('hl-thumbnail-1').src = video1.Thumbnail;
-            document.getElementById('hl-title-1').innerText = video1.Title;
-            document.getElementById('hl-views-1').innerText = formatViewCount(video1.ViewCount);
+            document.getElementById('highlow-video1-thumb').src = currentVideo.Thumbnail;
+            document.getElementById('highlow-video1-title').innerText = currentVideo.Title;
             
-            document.getElementById('hl-thumbnail-2').src = video2.Thumbnail;
-            document.getElementById('hl-title-2').innerText = video2.Title;
-            document.getElementById('hl-views-2').innerText = '??? 回';
+            document.getElementById('highlow-video2-thumb').src = currentVideo2.Thumbnail;
+            document.getElementById('highlow-video2-title').innerText = currentVideo2.Title;
         }
 
-        // ハイ＆ロー判定
-        function checkHigherLower(choice) {
-            const video1Views = parseInt(higherLowerVideos[0].ViewCount);
-            const video2Views = parseInt(higherLowerVideos[1].ViewCount);
+        // ハイ＆ローモード判定
+        function checkHighLowAnswer(videoNumber) {
+            const selected = (videoNumber === 1) ? currentVideo : currentVideo2;
+            selectedVideo = selected;
+            const otherVideo = (videoNumber === 1) ? currentVideo2 : currentVideo;
+            const isCorrect = parseInt(selected.ViewCount) > parseInt(otherVideo.ViewCount);
             
-            // 同じ再生数の場合はどちらも正解
-            const isCorrect = (video2Views === video1Views) ||
-                            (choice === 'higher' && video2Views > video1Views) ||
-                            (choice === 'lower' && video2Views < video1Views);
+            // 結果表示時に両方の再生数を表示
+            showHighLowResult(isCorrect, currentVideo, currentVideo2);
+        }
+
+        // ハイ＆ローモード結果表示
+        function showHighLowResult(isCorrect, video1, video2) {
+            const msgEl = document.getElementById('result-message');
+            const titleEl = document.getElementById('result-title');
+            const detailEl = document.getElementById('result-detail');
+            const linkEl = document.getElementById('result-link');
             
-            // 正解を表示
-            document.getElementById('hl-views-2').innerText = formatViewCount(higherLowerVideos[1].ViewCount);
+            // 誤答セクション
+            const wrongSection = document.getElementById('wrong-answer-section');
+            const wrongTitleEl = document.getElementById('wrong-answer-title');
+            const wrongLinkEl = document.getElementById('wrong-answer-link');
+
+            if (isCorrect) {
+                msgEl.innerText = "⭕ 正解！";
+                msgEl.className = "text-3xl font-bold mb-4 text-green-600";
+                wrongSection.classList.add('hidden');
+            } else {
+                msgEl.innerText = "❌ 残念...";
+                msgEl.className = "text-3xl font-bold mb-4 text-red-600";
+                
+                // 選択した方を誤答として表示
+                if (selectedVideo) {
+                    wrongSection.classList.remove('hidden');
+                    wrongTitleEl.innerText = selectedVideo.Title;
+                    wrongLinkEl.href = selectedVideo.URL;
+                } else {
+                    wrongSection.classList.add('hidden');
+                }
+            }
+
+            titleEl.innerText = "再生数比較";
+            detailEl.innerHTML = `
+                <p class="mb-1"><strong>${video1.Title}</strong></p>
+                <p class="text-blue-600 font-bold mb-3">${parseInt(video1.ViewCount).toLocaleString()} 回</p>
+                <p class="mb-1"><strong>${video2.Title}</strong></p>
+                <p class="text-blue-600 font-bold">${parseInt(video2.ViewCount).toLocaleString()} 回</p>
+            `;
             
-            // ハイ＆ローモードでは第2の動画を現在の動画として設定
-            currentVideo = higherLowerVideos[1];
-            
-            showResult(isCorrect);
+            // リンクは再生数が多い方を表示（正解）
+            const winnerVideo = parseInt(video1.ViewCount) > parseInt(video2.ViewCount) ? video1 : video2;
+            linkEl.href = winnerVideo.URL;
+
+            switchScreen('result');
         }
 
         // 結果表示
         function showResult(isCorrect) {
             const msgEl = document.getElementById('result-message');
             const titleEl = document.getElementById('result-title');
+            const detailEl = document.getElementById('result-detail');
             const linkEl = document.getElementById('result-link');
+            
+            // 誤答セクション
+            const wrongSection = document.getElementById('wrong-answer-section');
+            const wrongTitleEl = document.getElementById('wrong-answer-title');
+            const wrongLinkEl = document.getElementById('wrong-answer-link');
 
             if (isCorrect) {
                 msgEl.innerText = "⭕ 正解！";
                 msgEl.className = "text-3xl font-bold mb-4 text-green-600";
+                wrongSection.classList.add('hidden');
             } else {
                 msgEl.innerText = "❌ 残念...";
                 msgEl.className = "text-3xl font-bold mb-4 text-red-600";
+                
+                // 誤答を表示（ハードモード以外）
+                if (selectedVideo && selectedVideo !== currentVideo) {
+                    wrongSection.classList.remove('hidden');
+                    wrongTitleEl.innerText = selectedVideo.Title;
+                    wrongLinkEl.href = selectedVideo.URL;
+                } else {
+                    wrongSection.classList.add('hidden');
+                }
             }
 
             titleEl.innerText = currentVideo.Title;
+            detailEl.innerHTML = ''; // クリア（ハイ＆ローモード以外では空）
             linkEl.href = currentVideo.URL;
 
             switchScreen('result');
