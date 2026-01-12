@@ -64,6 +64,18 @@
                         <input type="radio" id="mode-highlow" name="mode" value="highlow" class="form-radio text-blue-600">
                         <span>ハイ＆ロー (再生数当て)</span>
                     </label>
+                    <label class="cursor-pointer flex items-center gap-2">
+                        <input type="radio" name="mode" value="viewcount" class="form-radio text-yellow-600">
+                        <span>再生数予想 (スライダー)</span>
+                    </label>
+                    <label class="cursor-pointer flex items-center gap-2">
+                        <input type="radio" name="mode" value="zoom" class="form-radio text-pink-600">
+                        <span>ズームモード (部分拡大)</span>
+                    </label>
+                    <label class="cursor-pointer flex items-center gap-2">
+                        <input type="radio" name="mode" value="blur" class="form-radio text-indigo-600">
+                        <span>ぼかしモード (徐々に鮮明)</span>
+                    </label>
                 </div>
             </div>
 
@@ -115,6 +127,41 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 再生数予想モード用：スライダーエリア -->
+            <div id="viewcount-container" class="hidden space-y-4">
+                <div class="text-center mb-4">
+                    <p class="font-bold text-lg mb-2">この動画の再生数は？</p>
+                    <p class="text-sm text-gray-500">スライダーで予想してください（誤差 ±10万回以内で正解）</p>
+                </div>
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <input type="range" id="viewcount-slider" min="0" max="10000000" step="10000" value="1000000" class="w-full h-3 bg-yellow-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="text-center mt-2">
+                        <span class="text-2xl font-bold text-yellow-600" id="viewcount-display">1,000,000</span>
+                        <span class="text-sm text-gray-600 ml-1">回</span>
+                    </div>
+                </div>
+                <button onclick="checkViewCountAnswer()" class="w-full bg-yellow-600 text-white font-bold py-3 rounded-lg hover:bg-yellow-700">回答する</button>
+            </div>
+
+            <!-- ズームモード用：拡大表示エリア -->
+            <div id="zoom-container" class="hidden">
+                <div class="flex justify-center mb-6 overflow-hidden">
+                    <div id="zoom-viewport" style="width: 320px; height: 180px; position: relative; overflow: hidden; border: 2px solid #e5e7eb; border-radius: 8px;">
+                        <img id="zoom-image" src="" alt="Zoomed Thumbnail" style="position: absolute;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ぼかしモード用：ぼかし画像エリア -->
+            <div id="blur-container" class="hidden">
+                <div class="text-center mb-4">
+                    <p class="text-sm text-gray-500">時間経過: <span id="blur-timer">0</span>秒 / 徐々に鮮明になります</p>
+                </div>
+                <div class="flex justify-center mb-6">
+                    <img id="blur-image" src="" alt="Blurred Thumbnail" class="rounded-lg shadow-md max-h-64 object-cover border-2 border-gray-200" style="filter: blur(50px);">
+                </div>
+            </div>
         </div>
 
         <div id="result-screen" class="hidden fade-in text-center">
@@ -123,6 +170,7 @@
             <!-- 誤答の場合：選択した動画を表示 -->
             <div id="wrong-answer-section" class="hidden bg-red-50 p-4 rounded-lg mb-4 text-left border-2 border-red-200">
                 <p class="text-xs text-gray-500 mb-1">あなたの回答</p>
+                <img id="wrong-answer-thumbnail" src="" alt="誤答サムネイル" class="w-full max-w-xs mx-auto rounded mb-2">
                 <p id="wrong-answer-title" class="font-bold text-lg mb-2 text-gray-900"></p>
                 <a id="wrong-answer-link" href="#" target="_blank" class="text-blue-600 underline text-sm hover:text-blue-800 flex items-center gap-1">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
@@ -132,6 +180,7 @@
             
             <div class="bg-gray-50 p-4 rounded-lg mb-6 text-left">
                 <p class="text-xs text-gray-500 mb-1">正解の動画</p>
+                <img id="result-thumbnail" src="" alt="正解サムネイル" class="w-full max-w-xs mx-auto rounded mb-2">
                 <p id="result-title" class="font-bold text-lg mb-2 text-gray-900"></p>
                 <div id="result-detail" class="mb-2"></div>
                 <a id="result-link" href="#" target="_blank" class="text-blue-600 underline text-sm hover:text-blue-800 flex items-center gap-1">
@@ -163,6 +212,8 @@
         let currentVideo2 = null; // ハイ＆ローモード用
         let selectedVideo = null; // 選択された動画（誤答時に表示用）
         let currentMode = 'normal';
+        let blurTimer = null; // ぼかしモード用タイマー
+        let blurSeconds = 0; // ぼかしモード経過時間
 
         // DOM要素
         const screens = {
@@ -246,6 +297,13 @@
         function nextQuestion() {
             if (filteredVideos.length === 0) return;
 
+            // タイマーをクリア
+            if (blurTimer) {
+                clearInterval(blurTimer);
+                blurTimer = null;
+            }
+            blurSeconds = 0;
+
             // ランダムに1つ選ぶ
             const randomIndex = Math.floor(Math.random() * filteredVideos.length);
             currentVideo = filteredVideos[randomIndex];
@@ -262,6 +320,9 @@
             const hardInput = document.getElementById('hard-input-area');
             const reverseOptions = document.getElementById('reverse-options');
             const highlowContainer = document.getElementById('highlow-container');
+            const viewcountContainer = document.getElementById('viewcount-container');
+            const zoomContainer = document.getElementById('zoom-container');
+            const blurContainer = document.getElementById('blur-container');
             const titleInput = document.getElementById('title-input');
 
             // すべてを一旦非表示
@@ -271,6 +332,9 @@
             hardInput.classList.add('hidden');
             reverseOptions.classList.add('hidden');
             highlowContainer.classList.add('hidden');
+            viewcountContainer.classList.add('hidden');
+            zoomContainer.classList.add('hidden');
+            blurContainer.classList.add('hidden');
 
             if (currentMode === 'normal') {
                 normalOptions.classList.remove('hidden');
@@ -287,6 +351,26 @@
                 quizImage.classList.add('hidden');
                 highlowContainer.classList.remove('hidden');
                 generateHighLowQuestion();
+            } else if (currentMode === 'viewcount') {
+                // 再生数予想モード
+                quizImage.classList.remove('hidden');
+                viewcountContainer.classList.remove('hidden');
+                normalOptions.classList.add('hidden');
+                setupViewCountMode();
+            } else if (currentMode === 'zoom') {
+                // ズームモード
+                quizImage.classList.add('hidden');
+                zoomContainer.classList.remove('hidden');
+                normalOptions.classList.remove('hidden');
+                setupZoomMode();
+                generateNormalOptions();
+            } else if (currentMode === 'blur') {
+                // ぼかしモード
+                quizImage.classList.add('hidden');
+                blurContainer.classList.remove('hidden');
+                normalOptions.classList.remove('hidden');
+                setupBlurMode();
+                generateNormalOptions();
             } else {
                 // ハードモード
                 hardInput.classList.remove('hidden');
@@ -470,11 +554,13 @@
             const titleEl = document.getElementById('result-title');
             const detailEl = document.getElementById('result-detail');
             const linkEl = document.getElementById('result-link');
+            const resultThumbnail = document.getElementById('result-thumbnail');
             
             // 誤答セクション
             const wrongSection = document.getElementById('wrong-answer-section');
             const wrongTitleEl = document.getElementById('wrong-answer-title');
             const wrongLinkEl = document.getElementById('wrong-answer-link');
+            const wrongThumbnail = document.getElementById('wrong-answer-thumbnail');
 
             if (isCorrect) {
                 msgEl.innerText = "⭕ 正解！";
@@ -489,6 +575,7 @@
                     wrongSection.classList.remove('hidden');
                     wrongTitleEl.innerText = selectedVideo.Title;
                     wrongLinkEl.href = selectedVideo.URL;
+                    wrongThumbnail.src = selectedVideo.Thumbnail;
                 } else {
                     wrongSection.classList.add('hidden');
                 }
@@ -505,6 +592,7 @@
             // リンクは再生数が多い方を表示（正解）
             const winnerVideo = parseInt(video1.ViewCount) > parseInt(video2.ViewCount) ? video1 : video2;
             linkEl.href = winnerVideo.URL;
+            resultThumbnail.src = winnerVideo.Thumbnail;
 
             switchScreen('result');
         }
@@ -515,11 +603,13 @@
             const titleEl = document.getElementById('result-title');
             const detailEl = document.getElementById('result-detail');
             const linkEl = document.getElementById('result-link');
+            const resultThumbnail = document.getElementById('result-thumbnail');
             
             // 誤答セクション
             const wrongSection = document.getElementById('wrong-answer-section');
             const wrongTitleEl = document.getElementById('wrong-answer-title');
             const wrongLinkEl = document.getElementById('wrong-answer-link');
+            const wrongThumbnail = document.getElementById('wrong-answer-thumbnail');
 
             if (isCorrect) {
                 msgEl.innerText = "⭕ 正解！";
@@ -534,6 +624,7 @@
                     wrongSection.classList.remove('hidden');
                     wrongTitleEl.innerText = selectedVideo.Title;
                     wrongLinkEl.href = selectedVideo.URL;
+                    wrongThumbnail.src = selectedVideo.Thumbnail;
                 } else {
                     wrongSection.classList.add('hidden');
                 }
@@ -542,13 +633,124 @@
             titleEl.innerText = currentVideo.Title;
             detailEl.innerHTML = ''; // クリア（ハイ＆ローモード以外では空）
             linkEl.href = currentVideo.URL;
+            resultThumbnail.src = currentVideo.Thumbnail;
 
             switchScreen('result');
         }
 
         function backToMenu() {
+            // タイマーをクリア
+            if (blurTimer) {
+                clearInterval(blurTimer);
+                blurTimer = null;
+            }
             switchScreen('start');
         }
+
+        // 再生数予想モード：セットアップ
+        function setupViewCountMode() {
+            const slider = document.getElementById('viewcount-slider');
+            const display = document.getElementById('viewcount-display');
+            
+            // スライダーの最大値を適切に設定（最大再生数の1.5倍程度）
+            const maxViewCount = Math.max(...filteredVideos.map(v => parseInt(v.ViewCount)));
+            slider.max = Math.ceil(maxViewCount * 1.5);
+            slider.value = Math.floor(maxViewCount / 2);
+            
+            function updateDisplay() {
+                display.innerText = parseInt(slider.value).toLocaleString();
+            }
+            
+            slider.addEventListener('input', updateDisplay);
+            updateDisplay();
+        }
+
+        // 再生数予想モード：回答チェック
+        function checkViewCountAnswer() {
+            const guessedCount = parseInt(document.getElementById('viewcount-slider').value);
+            const actualCount = parseInt(currentVideo.ViewCount);
+            const margin = 100000; // 誤差 ±10万回
+            
+            const isCorrect = Math.abs(guessedCount - actualCount) <= margin;
+            
+            // 結果表示時に予想値と実際の値を表示
+            const msgEl = document.getElementById('result-message');
+            const titleEl = document.getElementById('result-title');
+            const detailEl = document.getElementById('result-detail');
+            const linkEl = document.getElementById('result-link');
+            const resultThumbnail = document.getElementById('result-thumbnail');
+            const wrongSection = document.getElementById('wrong-answer-section');
+            
+            if (isCorrect) {
+                msgEl.innerText = "⭕ 正解！";
+                msgEl.className = "text-3xl font-bold mb-4 text-green-600";
+                wrongSection.classList.add('hidden');
+            } else {
+                msgEl.innerText = "❌ 残念...";
+                msgEl.className = "text-3xl font-bold mb-4 text-red-600";
+                wrongSection.classList.add('hidden');
+            }
+            
+            titleEl.innerText = currentVideo.Title;
+            detailEl.innerHTML = `
+                <p class="mb-1">あなたの予想: <strong class="text-yellow-600">${guessedCount.toLocaleString()}</strong> 回</p>
+                <p class="mb-1">実際の再生数: <strong class="text-blue-600">${actualCount.toLocaleString()}</strong> 回</p>
+                <p class="text-sm text-gray-600">誤差: ${Math.abs(guessedCount - actualCount).toLocaleString()} 回</p>
+            `;
+            linkEl.href = currentVideo.URL;
+            resultThumbnail.src = currentVideo.Thumbnail;
+            
+            switchScreen('result');
+        }
+
+        // ズームモード：セットアップ
+        function setupZoomMode() {
+            const zoomImage = document.getElementById('zoom-image');
+            const viewport = document.getElementById('zoom-viewport');
+            
+            zoomImage.src = currentVideo.Thumbnail;
+            
+            // サムネイルを3倍に拡大して、ランダムな位置を表示
+            const scale = 3;
+            zoomImage.style.width = (320 * scale) + 'px';
+            zoomImage.style.height = (180 * scale) + 'px';
+            
+            // ランダムな位置を選択（画像がはみ出す範囲で）
+            const maxLeft = -(320 * scale - 320);
+            const maxTop = -(180 * scale - 180);
+            const randomLeft = Math.floor(Math.random() * maxLeft);
+            const randomTop = Math.floor(Math.random() * maxTop);
+            
+            zoomImage.style.left = randomLeft + 'px';
+            zoomImage.style.top = randomTop + 'px';
+        }
+
+        // ぼかしモード：セットアップ
+        function setupBlurMode() {
+            const blurImage = document.getElementById('blur-image');
+            const timerDisplay = document.getElementById('blur-timer');
+            
+            blurImage.src = currentVideo.Thumbnail;
+            blurImage.style.filter = 'blur(50px)';
+            blurSeconds = 0;
+            timerDisplay.innerText = blurSeconds;
+            
+            // 1秒ごとにぼかしを減らす
+            blurTimer = setInterval(() => {
+                blurSeconds++;
+                timerDisplay.innerText = blurSeconds;
+                
+                // 20秒で完全に鮮明にする
+                const blurAmount = Math.max(0, 50 - (blurSeconds * 2.5));
+                blurImage.style.filter = `blur(${blurAmount}px)`;
+                
+                if (blurSeconds >= 20) {
+                    clearInterval(blurTimer);
+                    blurTimer = null;
+                }
+            }, 1000);
+        }
+    
     </script>
 </body>
 </html>
