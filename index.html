@@ -205,6 +205,15 @@
         // 設定
         const CSV_FILE = 'all_videos_ranking.csv';
         
+        // ゲームモード設定定数
+        const VIEWCOUNT_MARGIN = 100000; // 再生数予想の許容誤差（±10万回）
+        const THUMBNAIL_WIDTH = 320;
+        const THUMBNAIL_HEIGHT = 180;
+        const ZOOM_SCALE = 3; // ズームモードの拡大率
+        const BLUR_INITIAL = 50; // ぼかしモード初期値（px）
+        const BLUR_DURATION = 20; // ぼかしが完全に取れるまでの秒数
+        const BLUR_STEP = BLUR_INITIAL / BLUR_DURATION; // 1秒あたりのぼかし減少量
+        
         // 状態変数
         let allVideos = [];
         let filteredVideos = [];
@@ -214,6 +223,7 @@
         let currentMode = 'normal';
         let blurTimer = null; // ぼかしモード用タイマー
         let blurSeconds = 0; // ぼかしモード経過時間
+        let maxViewCount = 0; // フィルター済み動画の最大再生数（キャッシュ）
 
         // DOM要素
         const screens = {
@@ -284,6 +294,9 @@
             // CSVはRank順と仮定するが、念の為Rankでソート
             allVideos.sort((a, b) => parseInt(a.Rank) - parseInt(b.Rank));
             filteredVideos = allVideos.slice(0, count);
+            
+            // 最大再生数をキャッシュ（再生数予想モード用）
+            maxViewCount = Math.max(...filteredVideos.map(v => parseInt(v.ViewCount)));
 
             const modeRadios = document.getElementsByName('mode');
             for(const radio of modeRadios) {
@@ -652,8 +665,7 @@
             const slider = document.getElementById('viewcount-slider');
             const display = document.getElementById('viewcount-display');
             
-            // スライダーの最大値を適切に設定（最大再生数の1.5倍程度）
-            const maxViewCount = Math.max(...filteredVideos.map(v => parseInt(v.ViewCount)));
+            // スライダーの最大値を適切に設定（キャッシュ済みの最大再生数の1.5倍）
             slider.max = Math.ceil(maxViewCount * 1.5);
             slider.value = Math.floor(maxViewCount / 2);
             
@@ -669,9 +681,8 @@
         function checkViewCountAnswer() {
             const guessedCount = parseInt(document.getElementById('viewcount-slider').value);
             const actualCount = parseInt(currentVideo.ViewCount);
-            const margin = 100000; // 誤差 ±10万回
             
-            const isCorrect = Math.abs(guessedCount - actualCount) <= margin;
+            const isCorrect = Math.abs(guessedCount - actualCount) <= VIEWCOUNT_MARGIN;
             
             // 結果表示時に予想値と実際の値を表示
             const msgEl = document.getElementById('result-message');
@@ -710,14 +721,13 @@
             
             zoomImage.src = currentVideo.Thumbnail;
             
-            // サムネイルを3倍に拡大して、ランダムな位置を表示
-            const scale = 3;
-            zoomImage.style.width = (320 * scale) + 'px';
-            zoomImage.style.height = (180 * scale) + 'px';
+            // サムネイルを定数で定義された倍率で拡大して、ランダムな位置を表示
+            zoomImage.style.width = (THUMBNAIL_WIDTH * ZOOM_SCALE) + 'px';
+            zoomImage.style.height = (THUMBNAIL_HEIGHT * ZOOM_SCALE) + 'px';
             
             // ランダムな位置を選択（画像がはみ出す範囲で）
-            const maxLeft = -(320 * scale - 320);
-            const maxTop = -(180 * scale - 180);
+            const maxLeft = -(THUMBNAIL_WIDTH * ZOOM_SCALE - THUMBNAIL_WIDTH);
+            const maxTop = -(THUMBNAIL_HEIGHT * ZOOM_SCALE - THUMBNAIL_HEIGHT);
             const randomLeft = Math.floor(Math.random() * maxLeft);
             const randomTop = Math.floor(Math.random() * maxTop);
             
@@ -731,7 +741,7 @@
             const timerDisplay = document.getElementById('blur-timer');
             
             blurImage.src = currentVideo.Thumbnail;
-            blurImage.style.filter = 'blur(50px)';
+            blurImage.style.filter = `blur(${BLUR_INITIAL}px)`;
             blurSeconds = 0;
             timerDisplay.innerText = blurSeconds;
             
@@ -740,11 +750,11 @@
                 blurSeconds++;
                 timerDisplay.innerText = blurSeconds;
                 
-                // 20秒で完全に鮮明にする
-                const blurAmount = Math.max(0, 50 - (blurSeconds * 2.5));
+                // 定数で定義された期間で完全に鮮明にする
+                const blurAmount = Math.max(0, BLUR_INITIAL - (blurSeconds * BLUR_STEP));
                 blurImage.style.filter = `blur(${blurAmount}px)`;
                 
-                if (blurSeconds >= 20) {
+                if (blurSeconds >= BLUR_DURATION) {
                     clearInterval(blurTimer);
                     blurTimer = null;
                 }
