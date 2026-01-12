@@ -365,6 +365,11 @@
             }
         }
 
+        // 再生数フォーマット用ヘルパー関数
+        function formatViewCount(viewCount) {
+            return parseInt(viewCount).toLocaleString() + ' 回';
+        }
+
         // 通常モード判定
         function checkNormalAnswer(selectedVideo) {
             const isCorrect = selectedVideo.Title === currentVideo.Title;
@@ -390,15 +395,12 @@
             // タイトルを表示
             document.getElementById('reverse-title-display').innerText = currentVideo.Title;
 
-            // 正解以外の動画から3つ選ぶ（最適化版）
-            const availableVideos = filteredVideos.filter(v => v.Thumbnail !== currentVideo.Thumbnail);
+            // 正解以外の動画から3つ選ぶ（VideoIDで比較）
+            const availableVideos = filteredVideos.filter(v => v.VideoID !== currentVideo.VideoID);
             
             // シャッフルして最初の3つを取得
             const shuffled = [...availableVideos];
-            for (let i = shuffled.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-            }
+            shuffleArray(shuffled);
             
             const distractors = shuffled.slice(0, Math.min(3, shuffled.length));
 
@@ -422,7 +424,7 @@
 
         // 逆クイズの判定
         function checkReverseAnswer(selectedVideo) {
-            const isCorrect = selectedVideo.Thumbnail === currentVideo.Thumbnail;
+            const isCorrect = selectedVideo.VideoID === currentVideo.VideoID;
             showResult(isCorrect);
         }
 
@@ -459,7 +461,7 @@
             // UI表示
             document.getElementById('hl-thumbnail-1').src = video1.Thumbnail;
             document.getElementById('hl-title-1').innerText = video1.Title;
-            document.getElementById('hl-views-1').innerText = parseInt(video1.ViewCount).toLocaleString() + ' 回';
+            document.getElementById('hl-views-1').innerText = formatViewCount(video1.ViewCount);
             
             document.getElementById('hl-thumbnail-2').src = video2.Thumbnail;
             document.getElementById('hl-title-2').innerText = video2.Title;
@@ -482,7 +484,7 @@
             }
             
             // 正解を表示
-            document.getElementById('hl-views-2').innerText = parseInt(higherLowerVideos[1].ViewCount).toLocaleString() + ' 回';
+            document.getElementById('hl-views-2').innerText = formatViewCount(higherLowerVideos[1].ViewCount);
             
             // ハイ＆ローモードでは第2の動画を現在の動画として設定
             currentVideo = higherLowerVideos[1];
