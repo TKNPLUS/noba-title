@@ -105,11 +105,11 @@
             <div id="highlow-container" class="hidden space-y-4">
                 <div class="text-center font-bold text-lg mb-4">どちらの再生数が多い？</div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="cursor-pointer border-2 border-gray-300 hover:border-blue-500 rounded-lg p-4 transition" onclick="checkHighLowAnswer(currentVideo)">
+                    <div class="cursor-pointer border-2 border-gray-300 hover:border-blue-500 rounded-lg p-4 transition" onclick="checkHighLowAnswer(1)">
                         <img id="highlow-video1-thumb" src="" alt="サムネ1" class="w-full rounded mb-2">
                         <p id="highlow-video1-title" class="text-sm font-medium text-center"></p>
                     </div>
-                    <div class="cursor-pointer border-2 border-gray-300 hover:border-blue-500 rounded-lg p-4 transition" onclick="checkHighLowAnswer(currentVideo2)">
+                    <div class="cursor-pointer border-2 border-gray-300 hover:border-blue-500 rounded-lg p-4 transition" onclick="checkHighLowAnswer(2)">
                         <img id="highlow-video2-thumb" src="" alt="サムネ2" class="w-full rounded mb-2">
                         <p id="highlow-video2-title" class="text-sm font-medium text-center"></p>
                     </div>
@@ -385,11 +385,18 @@
             const distractors = [];
             const videosToCheck = filteredVideos.length >= 4 ? filteredVideos : allVideos;
             
-            while(distractors.length < 3) {
-                const r = videosToCheck[Math.floor(Math.random() * videosToCheck.length)];
-                if (r.Title !== currentVideo.Title && !distractors.find(d => d.Title === r.Title)) {
+            // 安全性チェック：十分な選択肢があるか確認
+            const availableVideos = videosToCheck.filter(v => v.Title !== currentVideo.Title);
+            const numDistractors = Math.min(3, availableVideos.length);
+            
+            let attempts = 0;
+            const maxAttempts = 100;
+            while(distractors.length < numDistractors && attempts < maxAttempts) {
+                const r = availableVideos[Math.floor(Math.random() * availableVideos.length)];
+                if (!distractors.find(d => d.Title === r.Title)) {
                     distractors.push(r);
                 }
+                attempts++;
             }
 
             // 正解と混ぜる
@@ -414,11 +421,20 @@
 
         // ハイ＆ローモード：問題生成
         function generateHighLowQuestion() {
+            // 安全性チェック：十分な動画があるか確認
+            if (filteredVideos.length < 2) {
+                console.error('Not enough videos for High&Low mode');
+                return;
+            }
+            
             // 2つ目の動画をランダムに選ぶ
+            let attempts = 0;
+            const maxAttempts = 100;
             do {
                 const randomIndex = Math.floor(Math.random() * filteredVideos.length);
                 currentVideo2 = filteredVideos[randomIndex];
-            } while(currentVideo2.Title === currentVideo.Title);
+                attempts++;
+            } while(currentVideo2.Title === currentVideo.Title && attempts < maxAttempts);
 
             // UI表示
             document.getElementById('highlow-video1-thumb').src = currentVideo.Thumbnail;
@@ -429,8 +445,9 @@
         }
 
         // ハイ＆ローモード判定
-        function checkHighLowAnswer(selectedVideo) {
-            const otherVideo = (selectedVideo === currentVideo) ? currentVideo2 : currentVideo;
+        function checkHighLowAnswer(videoNumber) {
+            const selectedVideo = (videoNumber === 1) ? currentVideo : currentVideo2;
+            const otherVideo = (videoNumber === 1) ? currentVideo2 : currentVideo;
             const isCorrect = parseInt(selectedVideo.ViewCount) > parseInt(otherVideo.ViewCount);
             
             // 結果表示時に両方の再生数を表示
