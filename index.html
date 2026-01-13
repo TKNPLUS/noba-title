@@ -897,6 +897,11 @@
                 })
                 .then(data => {
                     availableCSVFiles = data;
+                    // 最初のファイルをデフォルトとして設定
+                    if (availableCSVFiles.length > 0) {
+                        CSV_FILE = 'datas/' + availableCSVFiles[0].filename;
+                        currentDataSource = availableCSVFiles[0].filename;
+                    }
                     loadCSVData();
                 })
                 .catch(error => {
@@ -905,6 +910,8 @@
                     availableCSVFiles = [
                         { filename: 'nobamangames.csv', displayName: 'nobamangames' }
                     ];
+                    CSV_FILE = 'datas/nobamangames.csv';
+                    currentDataSource = 'nobamangames.csv';
                     loadCSVData();
                 });
         }
