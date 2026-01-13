@@ -292,7 +292,7 @@
         
         // データ管理用状態変数
         let generatedCSVs = []; // 生成したCSVデータの配列 [{name, data}]
-        let currentDataSource = 'nobamangames.csv'; // 現在選択中のデータソース名
+        let currentDataSource = ''; // 現在選択中のデータソース名（manifestから設定される）
         let availableCSVFiles = []; // datasフォルダ内の利用可能なCSVファイル
         
         // スライダーの更新関数（再利用のため外部に定義）
@@ -884,7 +884,9 @@
                     CSV_FILE = 'datas/' + newSource;
                     loadCSVData();
                 } else {
-                    console.error('無効なファイル名:', newSource);
+                    console.error('Invalid filename / 無効なファイル名:', newSource);
+                    // 前の有効な値に戻す
+                    select.value = currentDataSource;
                 }
             } else {
                 // 生成したCSVから読み込み
@@ -919,7 +921,7 @@
                 .then(data => {
                     // バリデーション: dataが配列であることを確認
                     if (!Array.isArray(data)) {
-                        throw new Error('manifest.jsonは配列である必要があります');
+                        throw new Error('manifest.json must be an array / manifest.jsonは配列である必要があります');
                     }
                     
                     // バリデーション: 各要素が必須プロパティを持つことを確認
@@ -932,7 +934,7 @@
                     });
                     
                     if (validFiles.length === 0) {
-                        throw new Error('有効なCSVファイルが見つかりませんでした');
+                        throw new Error('No valid CSV files found in manifest / 有効なCSVファイルが見つかりませんでした');
                     }
                     
                     availableCSVFiles = validFiles;
