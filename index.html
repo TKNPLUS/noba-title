@@ -32,6 +32,10 @@
         </div>
 
         <div id="start-screen" class="hidden fade-in space-y-6">
+            <button onclick="openSettingsModal()" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg shadow transition mb-4">
+                ⚙️ 設定・データ管理
+            </button>
+            
             <div class="bg-blue-50 p-4 rounded-lg">
                 <h2 class="font-bold mb-2">① 出題範囲（ランキング）</h2>
                 <input type="range" id="rank-range" min="10" max="100" value="50" class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer">
@@ -201,9 +205,69 @@
 
     </div>
 
+    <!-- 設定・データ管理モーダル -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h2 class="text-2xl font-bold text-gray-800">⚙️ 設定・データ管理</h2>
+                <button onclick="closeSettingsModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+
+            <!-- データソース選択 -->
+            <div class="mb-6 bg-blue-50 p-4 rounded-lg">
+                <h3 class="font-bold mb-2 text-blue-900">📊 データソース選択</h3>
+                <select id="data-source-select" onchange="onDataSourceChange()" class="w-full border-2 border-blue-300 p-2 rounded-lg focus:outline-none focus:border-blue-500">
+                    <option value="nobamangames.csv">nobamangames.csv</option>
+                    <option value="preset1.csv">preset1.csv (Top 10)</option>
+                </select>
+                <p class="text-xs text-gray-600 mt-2">プリセット、インポート、または生成したデータを選択</p>
+            </div>
+
+            <!-- YouTube Data API データ取得 -->
+            <div class="mb-6 bg-red-50 p-4 rounded-lg">
+                <h3 class="font-bold mb-3 text-red-900">📥 YouTube Data API からデータ取得</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">API Key</label>
+                        <input type="text" id="api-key-input" placeholder="YouTube Data API v3 キーを入力" class="w-full border-2 border-gray-300 p-2 rounded-lg focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Channel ID</label>
+                        <input type="text" id="channel-id-input" placeholder="チャンネルIDを入力" class="w-full border-2 border-gray-300 p-2 rounded-lg focus:outline-none focus:border-red-500">
+                    </div>
+                    <div>
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="exclude-shorts-checkbox" checked class="form-checkbox text-red-600">
+                            <span class="text-sm">Shortsを除外 (60秒以下 & #shorts含む)</span>
+                        </label>
+                    </div>
+                    <button onclick="fetchYouTubeData()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg">
+                        データ取得開始
+                    </button>
+                    <div id="fetch-status" class="text-sm text-gray-600 hidden"></div>
+                </div>
+            </div>
+
+            <!-- CSVインポート -->
+            <div class="mb-6 bg-green-50 p-4 rounded-lg">
+                <h3 class="font-bold mb-3 text-green-900">📁 CSVファイルをインポート</h3>
+                <input type="file" id="csv-file-input" accept=".csv" onchange="importCSVFile()" class="w-full border-2 border-green-300 p-2 rounded-lg">
+                <p class="text-xs text-gray-600 mt-2">ローカルのCSVファイルを読み込み</p>
+            </div>
+
+            <!-- CSVエクスポート -->
+            <div class="mb-4 bg-yellow-50 p-4 rounded-lg">
+                <h3 class="font-bold mb-3 text-yellow-900">💾 現在のデータをエクスポート</h3>
+                <button onclick="exportCurrentCSV()" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded-lg">
+                    CSVダウンロード
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // 設定
-        const CSV_FILE = 'all_videos_ranking.csv';
+        let CSV_FILE = 'datas/nobamangames.csv';
         
         // ゲームモード設定定数
         const VIEWCOUNT_MARGIN = 100000; // 再生数予想の許容誤差（±10万回）
@@ -227,6 +291,10 @@
         let blurSeconds = 0; // ぼかしモード経過時間
         let maxViewCount = 0; // フィルター済み動画の最大再生数（キャッシュ）
         
+        // データ管理用状態変数
+        let generatedCSVs = []; // 生成したCSVデータの配列 [{name, data}]
+        let currentDataSource = 'nobamangames.csv'; // 現在選択中のデータソース名
+        
         // スライダーの更新関数（再利用のため外部に定義）
         function updateViewCountDisplay() {
             const slider = document.getElementById('viewcount-slider');
@@ -247,22 +315,7 @@
 
         // 初期化：CSV読み込み
         window.onload = function() {
-            Papa.parse(CSV_FILE, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    if (results.data && results.data.length > 0) {
-                        allVideos = results.data;
-                        initMenu();
-                    } else {
-                        showError("データが空です。");
-                    }
-                },
-                error: function(err) {
-                    showError("CSVの読み込みに失敗しました。" + err);
-                }
-            });
+            loadCSVData();
         };
 
         function showError(msg) {
@@ -769,6 +822,293 @@
                     blurTimer = null;
                 }
             }, 1000);
+        }
+
+        // ==========================================
+        // 設定・データ管理機能
+        // ==========================================
+
+        // モーダルを開く
+        function openSettingsModal() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            updateDataSourceSelect();
+        }
+
+        // モーダルを閉じる
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        // データソース選択の更新
+        function updateDataSourceSelect() {
+            const select = document.getElementById('data-source-select');
+            // プリセットを保持
+            select.innerHTML = `
+                <option value="nobamangames.csv">nobamangames.csv</option>
+                <option value="preset1.csv">preset1.csv (Top 10)</option>
+            `;
+            
+            // 生成したCSVを追加
+            generatedCSVs.forEach(csv => {
+                const option = document.createElement('option');
+                option.value = csv.name;
+                option.textContent = csv.name;
+                select.appendChild(option);
+            });
+            
+            // 現在のデータソースを選択
+            select.value = currentDataSource;
+        }
+
+        // データソース変更時
+        function onDataSourceChange() {
+            const select = document.getElementById('data-source-select');
+            const newSource = select.value;
+            
+            // プリセットファイルの場合
+            if (newSource === 'nobamangames.csv' || newSource === 'preset1.csv') {
+                CSV_FILE = 'datas/' + newSource;
+                loadCSVData();
+            } else {
+                // 生成したCSVから読み込み
+                const csvData = generatedCSVs.find(csv => csv.name === newSource);
+                if (csvData) {
+                    allVideos = csvData.data;
+                    currentDataSource = newSource;
+                    initMenu();
+                }
+            }
+        }
+
+        // CSVデータの読み込み（共通関数）
+        function loadCSVData() {
+            screens.loading.classList.remove('hidden');
+            screens.start.classList.add('hidden');
+            
+            Papa.parse(CSV_FILE, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        allVideos = results.data;
+                        currentDataSource = CSV_FILE.split('/').pop();
+                        initMenu();
+                    } else {
+                        showError("データが空です。");
+                    }
+                },
+                error: function(err) {
+                    showError("CSVの読み込みに失敗しました。" + err);
+                }
+            });
+        }
+
+        // CSVファイルのインポート
+        function importCSVFile() {
+            const fileInput = document.getElementById('csv-file-input');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        const fileName = file.name;
+                        
+                        // 既存のデータを上書きしないようチェック
+                        const existingIndex = generatedCSVs.findIndex(csv => csv.name === fileName);
+                        if (existingIndex >= 0) {
+                            generatedCSVs[existingIndex].data = results.data;
+                        } else {
+                            generatedCSVs.push({
+                                name: fileName,
+                                data: results.data
+                            });
+                        }
+                        
+                        allVideos = results.data;
+                        currentDataSource = fileName;
+                        updateDataSourceSelect();
+                        initMenu();
+                        alert(`${fileName} をインポートしました！`);
+                    } else {
+                        alert("CSVデータが空です。");
+                    }
+                },
+                error: function(err) {
+                    alert("CSVの読み込みに失敗しました: " + err);
+                }
+            });
+        }
+
+        // 現在のデータをCSVでエクスポート
+        function exportCurrentCSV() {
+            if (allVideos.length === 0) {
+                alert("エクスポートするデータがありません。");
+                return;
+            }
+            
+            const csv = Papa.unparse(allVideos);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', currentDataSource || 'exported_data.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ==========================================
+        // YouTube Data API データ取得機能
+        // ==========================================
+
+        async function fetchYouTubeData() {
+            const apiKey = document.getElementById('api-key-input').value.trim();
+            const channelId = document.getElementById('channel-id-input').value.trim();
+            const excludeShorts = document.getElementById('exclude-shorts-checkbox').checked;
+            const statusEl = document.getElementById('fetch-status');
+            
+            // 入力チェック
+            if (!apiKey || !channelId) {
+                alert('API KeyとChannel IDを入力してください。');
+                return;
+            }
+            
+            statusEl.classList.remove('hidden');
+            statusEl.innerHTML = '<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-red-600 inline-block mr-2"></div>データ取得中...';
+            
+            try {
+                // 1. チャンネル情報取得
+                statusEl.innerHTML = '1/4: チャンネル情報を取得中...';
+                const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${channelId}&key=${apiKey}`;
+                const channelResponse = await fetch(channelUrl);
+                const channelData = await channelResponse.json();
+                
+                if (!channelData.items || channelData.items.length === 0) {
+                    throw new Error('チャンネルが見つかりませんでした。IDまたはAPIキーを確認してください。');
+                }
+                
+                const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists.uploads;
+                
+                // 2. 全動画ID取得
+                statusEl.innerHTML = '2/4: 動画IDリストを取得中...';
+                const videoIds = [];
+                let nextPageToken = null;
+                
+                do {
+                    const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=${uploadsPlaylistId}&maxResults=50&pageToken=${nextPageToken || ''}&key=${apiKey}`;
+                    const playlistResponse = await fetch(playlistUrl);
+                    const playlistData = await playlistResponse.json();
+                    
+                    if (playlistData.items) {
+                        playlistData.items.forEach(item => {
+                            videoIds.push(item.contentDetails.videoId);
+                        });
+                    }
+                    
+                    nextPageToken = playlistData.nextPageToken;
+                } while (nextPageToken);
+                
+                statusEl.innerHTML = `2/4: ${videoIds.length}本の動画IDを取得しました...`;
+                
+                // 3. 動画詳細取得
+                statusEl.innerHTML = '3/4: 動画詳細を取得中...';
+                const videosData = [];
+                const chunkSize = 50;
+                
+                for (let i = 0; i < videoIds.length; i += chunkSize) {
+                    const chunkIds = videoIds.slice(i, i + chunkSize);
+                    const idsString = chunkIds.join(',');
+                    
+                    const videoUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${idsString}&key=${apiKey}`;
+                    const videoResponse = await fetch(videoUrl);
+                    const videoData = await videoResponse.json();
+                    
+                    if (videoData.items) {
+                        for (const item of videoData.items) {
+                            const videoId = item.id;
+                            const snippet = item.snippet;
+                            const stats = item.statistics;
+                            const contentDetails = item.contentDetails;
+                            
+                            // ISO 8601形式の時間をパース
+                            const duration = parseISO8601Duration(contentDetails.duration);
+                            
+                            // Shorts判定
+                            if (excludeShorts && duration <= 60) {
+                                const title = snippet.title.toLowerCase();
+                                const description = (snippet.description || '').toLowerCase();
+                                if (title.includes('#shorts') || description.includes('#shorts')) {
+                                    continue; // Shortsを除外
+                                }
+                            }
+                            
+                            videosData.push({
+                                Title: snippet.title,
+                                ViewCount: parseInt(stats.viewCount || 0),
+                                URL: `https://www.youtube.com/watch?v=${videoId}`,
+                                Thumbnail: snippet.thumbnails.high?.url || snippet.thumbnails.default?.url || '',
+                                PublishedAt: snippet.publishedAt,
+                                DurationSec: duration
+                            });
+                        }
+                    }
+                    
+                    statusEl.innerHTML = `3/4: ${Math.min(i + chunkSize, videoIds.length)}/${videoIds.length} 処理完了 (保存対象: ${videosData.length}本)`;
+                }
+                
+                // 4. ソートとランク付け
+                statusEl.innerHTML = '4/4: データをソート中...';
+                videosData.sort((a, b) => b.ViewCount - a.ViewCount);
+                videosData.forEach((video, index) => {
+                    video.Rank = index + 1;
+                });
+                
+                // 生成したCSVを保存
+                // タイムスタンプ生成: ISO形式から不要な記号を削除し、ミリ秒とZを除去 (例: 2026-01-13T15-23-45)
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                const fileName = `youtube_${channelId}_${timestamp}.csv`;
+                
+                generatedCSVs.push({
+                    name: fileName,
+                    data: videosData
+                });
+                
+                allVideos = videosData;
+                currentDataSource = fileName;
+                
+                statusEl.innerHTML = `✅ 完了！${videosData.length}本の動画データを取得しました。`;
+                setTimeout(() => {
+                    statusEl.classList.add('hidden');
+                    updateDataSourceSelect();
+                    initMenu();
+                    alert(`データ取得完了！\n${videosData.length}本の動画を取得しました。\n\nファイル名: ${fileName}`);
+                }, 2000);
+                
+            } catch (error) {
+                statusEl.innerHTML = `❌ エラー: ${error.message}`;
+                console.error('YouTube API Error:', error);
+                setTimeout(() => statusEl.classList.add('hidden'), 5000);
+            }
+        }
+
+        // ISO 8601形式の時間を秒に変換
+        function parseISO8601Duration(duration) {
+            // Support decimal seconds (e.g., PT1M30.5S)
+            const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+            if (!match) return 0;
+            
+            const hours = parseInt(match[1] || 0);
+            const minutes = parseInt(match[2] || 0);
+            const seconds = parseFloat(match[3] || 0);
+            
+            return hours * 3600 + minutes * 60 + seconds;
         }
     
     </script>
