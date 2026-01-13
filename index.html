@@ -1071,6 +1071,7 @@
                 });
                 
                 // 生成したCSVを保存
+                // タイムスタンプ生成: ISO形式から不要な記号を削除し、ミリ秒とZを除去 (例: 2026-01-13T15-23-45)
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
                 const fileName = `youtube_${channelId}_${timestamp}.csv`;
                 
@@ -1099,12 +1100,13 @@
 
         // ISO 8601形式の時間を秒に変換
         function parseISO8601Duration(duration) {
-            const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+            // Support decimal seconds (e.g., PT1M30.5S)
+            const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
             if (!match) return 0;
             
             const hours = parseInt(match[1] || 0);
             const minutes = parseInt(match[2] || 0);
-            const seconds = parseInt(match[3] || 0);
+            const seconds = parseFloat(match[3] || 0);
             
             return hours * 3600 + minutes * 60 + seconds;
         }
