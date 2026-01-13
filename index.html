@@ -951,6 +951,7 @@
                     ];
                     CSV_FILE = 'datas/nobamangames.csv';
                     currentDataSource = 'nobamangames.csv';
+                    updateDataSourceSelect(); // ドロップダウンを更新
                     loadCSVData();
                 });
         }
@@ -967,7 +968,7 @@
                 complete: function(results) {
                     if (results.data && results.data.length > 0) {
                         allVideos = results.data;
-                        currentDataSource = CSV_FILE.split('/').pop();
+                        // currentDataSourceは既に設定済み（loadManifest、onDataSourceChangeなどで）
                         initMenu();
                     } else {
                         showError("データが空です。");
