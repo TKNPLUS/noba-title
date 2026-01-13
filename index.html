@@ -968,7 +968,8 @@
                 complete: function(results) {
                     if (results.data && results.data.length > 0) {
                         allVideos = results.data;
-                        // currentDataSourceは既に設定済み（loadManifest、onDataSourceChangeなどで）
+                        // currentDataSource is set by loadManifest() during initialization 
+                        // or onDataSourceChange() when user selects a different source
                         initMenu();
                     } else {
                         showError("データが空です。");
