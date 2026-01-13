@@ -218,6 +218,7 @@
                 <h3 class="font-bold mb-2 text-blue-900">📊 データソース選択</h3>
                 <select id="data-source-select" onchange="onDataSourceChange()" class="w-full border-2 border-blue-300 p-2 rounded-lg focus:outline-none focus:border-blue-500">
                     <option value="nobamangames.csv">nobamangames.csv</option>
+                    <option value="preset1.csv">preset1.csv (Top 10)</option>
                 </select>
                 <p class="text-xs text-gray-600 mt-2">プリセット、インポート、または生成したデータを選択</p>
             </div>
@@ -841,7 +842,11 @@
         // データソース選択の更新
         function updateDataSourceSelect() {
             const select = document.getElementById('data-source-select');
-            select.innerHTML = '<option value="nobamangames.csv">nobamangames.csv</option>';
+            // プリセットを保持
+            select.innerHTML = `
+                <option value="nobamangames.csv">nobamangames.csv</option>
+                <option value="preset1.csv">preset1.csv (Top 10)</option>
+            `;
             
             // 生成したCSVを追加
             generatedCSVs.forEach(csv => {
@@ -860,9 +865,9 @@
             const select = document.getElementById('data-source-select');
             const newSource = select.value;
             
-            // プリセット（nobamangames.csv）の場合
-            if (newSource === 'nobamangames.csv') {
-                CSV_FILE = 'datas/nobamangames.csv';
+            // プリセットファイルの場合
+            if (newSource === 'nobamangames.csv' || newSource === 'preset1.csv') {
+                CSV_FILE = 'datas/' + newSource;
                 loadCSVData();
             } else {
                 // 生成したCSVから読み込み
