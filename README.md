@@ -34,10 +34,26 @@ YouTubeチャンネルの動画サムネイルを使ったクイズゲームで�
 #### 3. CSVファイルのエクスポート
 - 現在使用中のデータをCSVファイルとしてダウンロード
 
-#### 4. プリセット機能
-- `nobamangames.csv`: デフォルトデータ（全動画）
-- `preset1.csv`: Top 10動画のみ
+#### 4. データソースの管理
+- `datas`フォルダ内のCSVファイルは自動的に検出され、ドロップダウンに表示されます
+- 新しいCSVファイルを追加する場合：
+  1. CSVファイルを`datas`フォルダに配置
+  2. `datas/manifest.json`を更新して新しいファイルを追加
 - 生成・インポートしたCSVも選択可能
+
+manifest.jsonの例:
+```json
+[
+  {
+    "filename": "nobamangames.csv",
+    "displayName": "nobamangames"
+  },
+  {
+    "filename": "hajimemashite.csv",
+    "displayName": "hajimemashite"
+  }
+]
+```
 
 ## ファイル構成
 
@@ -45,8 +61,9 @@ YouTubeチャンネルの動画サムネイルを使ったクイズゲームで�
 noba-title/
 ├── index.html          # メインアプリケーション
 ├── datas/              # データフォルダ
+│   ├── manifest.json      # CSVファイル一覧（自動検出用）
 │   ├── nobamangames.csv   # デフォルトデータ
-│   └── preset1.csv        # プリセット1 (Top 10)
+│   └── hajimemashite.csv  # その他のデータ
 └── README.md           # このファイル
 ```
 
