@@ -217,7 +217,7 @@
             <div class="mb-6 bg-blue-50 p-4 rounded-lg">
                 <h3 class="font-bold mb-2 text-blue-900">📊 データソース選択</h3>
                 <select id="data-source-select" onchange="onDataSourceChange()" class="w-full border-2 border-blue-300 p-2 rounded-lg focus:outline-none focus:border-blue-500">
-                    <!-- オプションは自動的に読み込まれます -->
+                    <!-- オプションはmanifest.jsonから自動的に読み込まれます -->
                 </select>
                 <p class="text-xs text-gray-600 mt-2">プリセット、インポート、または生成したデータを選択</p>
             </div>
@@ -847,14 +847,20 @@
             
             // datasフォルダのCSVファイルを追加
             availableCSVFiles.forEach(csv => {
+                // バリデーション: 必須プロパティの確認
+                if (!csv.filename || !csv.displayName) return;
+                
                 const option = document.createElement('option');
                 option.value = csv.filename;
+                // セキュリティ: textContentを使用してXSS対策
                 option.textContent = csv.displayName;
                 select.appendChild(option);
             });
             
             // 生成したCSVを追加
             generatedCSVs.forEach(csv => {
+                if (!csv.name) return;
+                
                 const option = document.createElement('option');
                 option.value = csv.name;
                 option.textContent = csv.name;
@@ -873,8 +879,13 @@
             // datasフォルダのCSVファイルの場合
             const isDatasFolderCSV = availableCSVFiles.some(csv => csv.filename === newSource);
             if (isDatasFolderCSV) {
-                CSV_FILE = 'datas/' + newSource;
-                loadCSVData();
+                // バリデーション: ファイル名が安全であることを確認
+                if (isValidFilename(newSource)) {
+                    CSV_FILE = 'datas/' + newSource;
+                    loadCSVData();
+                } else {
+                    console.error('無効なファイル名:', newSource);
+                }
             } else {
                 // 生成したCSVから読み込み
                 const csvData = generatedCSVs.find(csv => csv.name === newSource);
@@ -884,6 +895,16 @@
                     initMenu();
                 }
             }
+        }
+
+        // ファイル名のバリデーション（パストラバーサル対策）
+        function isValidFilename(filename) {
+            if (typeof filename !== 'string') return false;
+            // パストラバーサル攻撃を防ぐ
+            if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) return false;
+            // .csv拡張子のみ許可
+            if (!filename.endsWith('.csv')) return false;
+            return true;
         }
 
         // manifestファイルの読み込み
@@ -896,12 +917,28 @@
                     return response.json();
                 })
                 .then(data => {
-                    availableCSVFiles = data;
-                    // 最初のファイルをデフォルトとして設定
-                    if (availableCSVFiles.length > 0) {
-                        CSV_FILE = 'datas/' + availableCSVFiles[0].filename;
-                        currentDataSource = availableCSVFiles[0].filename;
+                    // バリデーション: dataが配列であることを確認
+                    if (!Array.isArray(data)) {
+                        throw new Error('manifest.jsonは配列である必要があります');
                     }
+                    
+                    // バリデーション: 各要素が必須プロパティを持つことを確認
+                    const validFiles = data.filter(item => {
+                        return item && 
+                               typeof item === 'object' &&
+                               typeof item.filename === 'string' &&
+                               typeof item.displayName === 'string' &&
+                               isValidFilename(item.filename);
+                    });
+                    
+                    if (validFiles.length === 0) {
+                        throw new Error('有効なCSVファイルが見つかりませんでした');
+                    }
+                    
+                    availableCSVFiles = validFiles;
+                    // 最初のファイルをデフォルトとして設定
+                    CSV_FILE = 'datas/' + availableCSVFiles[0].filename;
+                    currentDataSource = availableCSVFiles[0].filename;
                     loadCSVData();
                 })
                 .catch(error => {
