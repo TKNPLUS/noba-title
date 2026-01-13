@@ -217,8 +217,7 @@
             <div class="mb-6 bg-blue-50 p-4 rounded-lg">
                 <h3 class="font-bold mb-2 text-blue-900">📊 データソース選択</h3>
                 <select id="data-source-select" onchange="onDataSourceChange()" class="w-full border-2 border-blue-300 p-2 rounded-lg focus:outline-none focus:border-blue-500">
-                    <option value="nobamangames.csv">nobamangames.csv</option>
-                    <option value="preset1.csv">preset1.csv (Top 10)</option>
+                    <!-- オプションはmanifest.jsonから自動的に読み込まれます -->
                 </select>
                 <p class="text-xs text-gray-600 mt-2">プリセット、インポート、または生成したデータを選択</p>
             </div>
@@ -293,7 +292,8 @@
         
         // データ管理用状態変数
         let generatedCSVs = []; // 生成したCSVデータの配列 [{name, data}]
-        let currentDataSource = 'nobamangames.csv'; // 現在選択中のデータソース名
+        let currentDataSource = ''; // 現在選択中のデータソース名（manifestから設定される）
+        let availableCSVFiles = []; // datasフォルダ内の利用可能なCSVファイル
         
         // スライダーの更新関数（再利用のため外部に定義）
         function updateViewCountDisplay() {
@@ -313,9 +313,9 @@
             result: document.getElementById('result-screen')
         };
 
-        // 初期化：CSV読み込み
+        // 初期化：manifest読み込み後にCSV読み込み
         window.onload = function() {
-            loadCSVData();
+            loadManifest();
         };
 
         function showError(msg) {
@@ -842,14 +842,25 @@
         // データソース選択の更新
         function updateDataSourceSelect() {
             const select = document.getElementById('data-source-select');
-            // プリセットを保持
-            select.innerHTML = `
-                <option value="nobamangames.csv">nobamangames.csv</option>
-                <option value="preset1.csv">preset1.csv (Top 10)</option>
-            `;
+            // すべてクリア
+            select.innerHTML = '';
+            
+            // datasフォルダのCSVファイルを追加
+            availableCSVFiles.forEach(csv => {
+                // バリデーション: 必須プロパティの確認
+                if (!csv.filename || !csv.displayName) return;
+                
+                const option = document.createElement('option');
+                option.value = csv.filename;
+                // セキュリティ: textContentを使用してXSS対策
+                option.textContent = csv.displayName;
+                select.appendChild(option);
+            });
             
             // 生成したCSVを追加
             generatedCSVs.forEach(csv => {
+                if (!csv.name) return;
+                
                 const option = document.createElement('option');
                 option.value = csv.name;
                 option.textContent = csv.name;
@@ -865,10 +876,18 @@
             const select = document.getElementById('data-source-select');
             const newSource = select.value;
             
-            // プリセットファイルの場合
-            if (newSource === 'nobamangames.csv' || newSource === 'preset1.csv') {
-                CSV_FILE = 'datas/' + newSource;
-                loadCSVData();
+            // datasフォルダのCSVファイルの場合
+            const isDatasFolderCSV = availableCSVFiles.some(csv => csv.filename === newSource);
+            if (isDatasFolderCSV) {
+                // バリデーション: ファイル名が安全であることを確認
+                if (isValidFilename(newSource)) {
+                    CSV_FILE = 'datas/' + newSource;
+                    loadCSVData();
+                } else {
+                    console.error('Invalid filename / 無効なファイル名:', newSource);
+                    // 前の有効な値に戻す
+                    select.value = currentDataSource;
+                }
             } else {
                 // 生成したCSVから読み込み
                 const csvData = generatedCSVs.find(csv => csv.name === newSource);
@@ -878,6 +897,63 @@
                     initMenu();
                 }
             }
+        }
+
+        // ファイル名のバリデーション（パストラバーサル対策）
+        function isValidFilename(filename) {
+            if (typeof filename !== 'string') return false;
+            // パストラバーサル攻撃を防ぐ
+            if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) return false;
+            // .csv拡張子のみ許可
+            if (!filename.endsWith('.csv')) return false;
+            return true;
+        }
+
+        // manifestファイルの読み込み
+        function loadManifest() {
+            fetch('datas/manifest.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('manifest.jsonが見つかりません');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // バリデーション: dataが配列であることを確認
+                    if (!Array.isArray(data)) {
+                        throw new Error('manifest.json must be an array / manifest.jsonは配列である必要があります');
+                    }
+                    
+                    // バリデーション: 各要素が必須プロパティを持つことを確認
+                    const validFiles = data.filter(item => {
+                        return item && 
+                               typeof item === 'object' &&
+                               typeof item.filename === 'string' &&
+                               typeof item.displayName === 'string' &&
+                               isValidFilename(item.filename);
+                    });
+                    
+                    if (validFiles.length === 0) {
+                        throw new Error('No valid CSV files found in manifest / 有効なCSVファイルが見つかりませんでした');
+                    }
+                    
+                    availableCSVFiles = validFiles;
+                    // 最初のファイルをデフォルトとして設定
+                    CSV_FILE = 'datas/' + availableCSVFiles[0].filename;
+                    currentDataSource = availableCSVFiles[0].filename;
+                    loadCSVData();
+                })
+                .catch(error => {
+                    console.error('Manifest読み込みエラー:', error);
+                    // フォールバック: デフォルトのファイルリストを使用
+                    availableCSVFiles = [
+                        { filename: 'nobamangames.csv', displayName: 'nobamangames' }
+                    ];
+                    CSV_FILE = 'datas/nobamangames.csv';
+                    currentDataSource = 'nobamangames.csv';
+                    updateDataSourceSelect(); // ドロップダウンを更新
+                    loadCSVData();
+                });
         }
 
         // CSVデータの読み込み（共通関数）
@@ -892,7 +968,8 @@
                 complete: function(results) {
                     if (results.data && results.data.length > 0) {
                         allVideos = results.data;
-                        currentDataSource = CSV_FILE.split('/').pop();
+                        // currentDataSource is set by loadManifest() during initialization 
+                        // or onDataSourceChange() when user selects a different source
                         initMenu();
                     } else {
                         showError("データが空です。");
