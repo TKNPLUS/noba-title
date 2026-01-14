@@ -12,4 +12,9 @@
     "filename": "BuyerTaka.csv",
     "displayName": "BuyerTakahashi"
   }
+  ,
+  {
+    "filename": "boost.csv",
+    "displayName": "boost"
+  }
 ]
